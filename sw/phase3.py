@@ -23,7 +23,8 @@ import suite as _suite
 _suite.POOLING = False        # phase 3: one word per variable
 from suite import DESIGNS, build, MASK
 
-SRC = {'sq': ['subleq_cpu.v', 'comp_subleq.v'], 'acc': ['cpu_acc.v']}
+SRC = {'sq': ['subleq_cpu.v', 'comp_subleq.v'], 'acc': ['cpu_acc.v'],
+       'move': ['cpu_move.v']}
 
 
 def hexfile(mem, path):
@@ -34,14 +35,14 @@ def hexfile(mem, path):
 
 def run_rtl(key, n, defs, nout):
     exe = f'/tmp/p3_{key}'
-    subleq = (key == 'sq')
-    cmd = (['iverilog', '-g2012', '-o', exe,
-            '-DDUT_SUBLEQ' if subleq else '-DDUT_ACC',
+    fam = {'sq': 'sq', 'move': 'move'}.get(key, 'acc')
+    flag = {'sq': '-DDUT_SUBLEQ', 'move': '-DDUT_MOVE', 'acc': '-DDUT_ACC'}[fam]
+    cmd = (['iverilog', '-g2012', '-o', exe, flag,
             f'-DNWORDS={n}', f'-DAWIDTH={aw(n)}', f'-DNOUT={nout}',
             f'-DHEXFILE="{BUILD}/p3_{key}.hex"'] +
            ['-D' + d for d in defs] +
            [f'{ROOT}/rtl/tb_sweep.v', f'{ROOT}/rtl/ramg.v'] +
-           [f'{ROOT}/rtl/{f}' for f in SRC['sq' if subleq else 'acc']])
+           [f'{ROOT}/rtl/{f}' for f in SRC[fam]])
     subprocess.run(cmd, check=True, capture_output=True, text=True)
     out = subprocess.run([exe], capture_output=True, text=True, cwd=ROOT).stdout
     m = re.search(r'RESULT cycles=(\d+) outputs=\d+ errors=(\d+)', out)
@@ -56,6 +57,10 @@ def core_cost(d, n):
         rd = (f'read_verilog {ROOT}/rtl/subleq_cpu.v {ROOT}/rtl/comp_subleq.v\n'
               f' chparam -set N {n} -set AW {aw(n)} comp_subleq\n')
         top = 'comp_subleq'
+    elif key == 'move':
+        rd = (f'read_verilog {ROOT}/rtl/cpu_move.v\n'
+              f' chparam -set AW {aw(n)} comp_move\n')
+        top = 'comp_move'
     else:
         flags = ' '.join('-D' + x for x in defs)
         rd = (f'read_verilog {flags} {ROOT}/rtl/cpu_acc.v\n'

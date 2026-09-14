@@ -23,6 +23,12 @@ module tb;
     comp_fib2 #(.AW(`AWIDTH)) dut (
         .clk(clk), .rst(rst), .out_val(out_val), .out_stb(out_stb),
         .maddr(maddr), .mdin(rd));
+ `elsif DUT_MOVE
+    wire mwe;
+    wire [15:0] wd;
+    comp_move #(.AW(`AWIDTH)) dut (
+        .clk(clk), .rst(rst), .out_val(out_val), .out_stb(out_stb),
+        .maddr(maddr), .mwe(mwe), .mdout(wd), .mdin(rd));
  `elsif DUT_SUBLEQ
     wire mwe;
     wire [15:0] wd;

@@ -103,6 +103,36 @@ words, so going 8-bit like Lipsi cannot help when memory is built from gates.
 
 Over half the remaining 7,078 gates is the benchmark's own working set.
 
+## Phase 5: the MOVE machine
+
+Jones's Ultimate RISC — one instruction, `MOVE src,dst`, with a memory-mapped
+accumulator, ALU, PC and index register — built and measured on the same suite.
+
+| design | ops | words | core | best | cycles | gate-Mcy |
+|---|---:|---:|---:|---:|---:|---:|
+| **10-instruction accumulator** | 10 | 235 | 1509 | **7078** | 10333 | 73.1 |
+| 12-instruction, immediates | 12 | 227 | 1691 | 7325 | 9814 | **71.9** |
+| MOVE (Ultimate RISC) | 1 | 225 | 1606 | 7329 | 10743 | 78.7 |
+| SUBLEQ | 1 | 841 | 1241 | 164783 | 47509 | 7829 |
+
+**It loses by 3.5%.** After SUBLEQ came in 67x worse, a one-instruction machine
+finishing within 4% of the best design is the most interesting result here — and
+both halves of the phase 4 prediction ("small area win, ~1.6x cycle loss") were
+wrong. The accumulator absorbs one end of nearly every move, so MOVE averages
+2.09 cycles/instruction against 1.86, and it needs *fewer* instructions and less
+code. Its core is *larger*, because removing the opcode relocates the decoding
+into two 8-bit port comparators rather than eliminating it.
+
+What it really pays for is branch targets: a MOVE machine cannot encode one in
+its instruction, so every branch site needs a constant word — 34 constants
+against 12. In RAM that is ~4,300 gates and it loses badly; in ROM it is ~90 and
+the race is close. **The Ultimate RISC is only competitive because read-only
+storage is cheap.**
+
+Closing finding: once the memory hierarchy is right, *which* single instruction
+you pick matters far more than *how many* you have — SUBLEQ and MOVE are both
+OISCs and they differ by 23x.
+
 ## Documents
 
 * **[project.md](project.md)** — what is being compared and why, the fairness

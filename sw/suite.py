@@ -213,6 +213,8 @@ def interp(prog):
 class Target:
     self_modifying = False
 
+    extra = {}                # backend-supplied fixed symbols (e.g. I/O ports)
+
     def __init__(self):
         self.words, self.labels, self.sym = [], {}, {}
         self.consts, self.vars = {}, []
@@ -232,6 +234,12 @@ class Target:
         name = f'@t{opc}:{base}'
         self.consts.setdefault(name, ('instr', opc, base))
         return name
+
+    def Ksym(self, name):
+        """constant word holding the address of a label or array"""
+        key = f'@s:{name}'
+        self.consts.setdefault(key, ('sym', name))
+        return key
 
     def negbase(self, base):
         """constant word holding -base, for planting an address into code"""
@@ -271,11 +279,16 @@ class Target:
             n = addr
             sym['port'] = n
             sym.update(self.labels)
+            sym.update(self.extra)
             self.sym = sym
         mem = [0] * n
         for i, w in enumerate(self.words):
             if w[0] == 'lit':
                 mem[i] = w[1] & MASK
+            elif w[0] == 'mv':
+                _, sn, so, dn, do = w
+                mem[i] = (((self.sym[dn] + do) & 0xFF) << 8) | \
+                         ((self.sym[sn] + so) & 0xFF)
             else:
                 _, name, off, opc = w
                 v = self.sym[name] + off
@@ -283,6 +296,8 @@ class Target:
         for c, spec in self.consts.items():
             if spec[0] == 'val':
                 mem[self.sym[c]] = spec[1]
+            elif spec[0] == 'sym':
+                mem[self.sym[c]] = self.sym[spec[1]] & MASK
             elif spec[0] == 'instr':
                 mem[self.sym[c]] = ((spec[1] << 12) | self.sym[spec[2]]) & MASK
             else:
@@ -560,6 +575,110 @@ def emu_subleq(mem, n, nout, limit=10 ** 8):
     return out, cyc, ic
 
 
+# ------------------------------------------------------- MOVE machine target
+# Jones's Ultimate RISC: one instruction, MOVE src,dst, with a memory-mapped
+# accumulator, ALU, program counter and index register.
+PBASE = 0xF0
+PORTS = dict(ACC=0, ADD=1, SUB=2, PC=3, PCZ=4, PCN=5, ADR=6, ADRA=7,
+             IND=8, OUT=9)
+
+
+class Move(Target):
+    self_modifying = False
+    extra = {k: PBASE + v for k, v in PORTS.items()}
+
+    def mv(self, src, dst, soff=0, doff=0):
+        self.words.append(('mv', src, soff, dst, doff))
+
+    def gen(self, op):
+        k = op[0]
+        if k == 'movi':
+            self.var(op[1]); self.mv(self.K(op[2]), op[1])
+        elif k == 'mov':
+            self.var(op[1]); self.var(op[2]); self.mv(op[2], op[1])
+        elif k in ('add', 'sub'):
+            self.var(op[1]); self.var(op[2])
+            self.mv(op[1], 'ACC')
+            self.mv(op[2], 'ADD' if k == 'add' else 'SUB')
+            self.mv('ACC', op[1])
+        elif k in ('addi', 'subi'):
+            self.var(op[1])
+            self.mv(op[1], 'ACC')
+            self.mv(self.K(op[2]), 'ADD' if k == 'addi' else 'SUB')
+            self.mv('ACC', op[1])
+        elif k == 'out':
+            self.var(op[1]); self.mv(op[1], 'OUT')
+        elif k == 'jmp':
+            self.mv(self.Ksym(op[1]), 'PC')
+        elif k == 'jz':
+            self.var(op[1]); self.mv(op[1], 'ACC'); self.mv(self.Ksym(op[2]), 'PCZ')
+        elif k == 'jn':
+            self.var(op[1]); self.mv(op[1], 'ACC'); self.mv(self.Ksym(op[2]), 'PCN')
+        elif k == 'ldx':
+            _, d, base, idx = op
+            self.var(d); self.var(idx)
+            self.mv(self.Ksym(base), 'ADR'); self.mv(idx, 'ADRA')
+            self.mv('IND', d)
+        elif k == 'stx':
+            _, base, idx, s = op
+            self.var(idx); self.var(s)
+            self.mv(self.Ksym(base), 'ADR'); self.mv(idx, 'ADRA')
+            self.mv(s, 'IND')
+        elif k == 'halt':
+            self.labels['_halt'] = self.here()
+            self.mv(self.Ksym('_halt'), 'PC')
+        else:
+            raise ValueError(k)
+
+
+def emu_move(mem, n, nout, limit=10 ** 7):
+    mem = mem[:] + [0] * (256 - len(mem))
+    pc = acc = adr = cyc = ic = 0
+    out = []
+    while ic < limit and len(out) < nout:
+        w = mem[pc]
+        pc = (pc + 1) & 0xFF
+        src, dst = w & 0xFF, (w >> 8) & 0xFF
+        ic += 1
+        rd = wr = 0
+        if src >= PBASE:
+            sid = src - PBASE
+            if sid == 0:
+                v = acc
+            elif sid == 8:
+                v = mem[adr]; rd = 1
+            else:
+                v = 0
+        else:
+            v = mem[src]; rd = 1
+        if dst >= PBASE:
+            did = dst - PBASE
+            if did == 0:
+                acc = v
+            elif did == 1:
+                acc = (acc + v) & MASK
+            elif did == 2:
+                acc = (acc - v) & MASK
+            elif did == 3:
+                pc = v & 0xFF
+            elif did == 4:
+                pc = v & 0xFF if acc == 0 else pc
+            elif did == 5:
+                pc = v & 0xFF if acc & 0x8000 else pc
+            elif did == 6:
+                adr = v & 0xFF
+            elif did == 7:
+                adr = (adr + v) & 0xFF
+            elif did == 8:
+                mem[adr] = v; wr = 1
+            elif did == 9:
+                out.append(v)
+        else:
+            mem[dst] = v; wr = 1
+        cyc += 1 + rd + wr
+    return out, cyc, ic
+
+
 # ------------------------------------------------------------------ designs
 DESIGNS = [
     dict(key='sq',    label='SUBLEQ',                    nops=1,
@@ -576,6 +695,8 @@ DESIGNS = [
          make=lambda: Acc(has_add=True, has_jmp=True, has_index=True,
                           has_imm=True),
          defs=['HAS_SIGN', 'HAS_ADD', 'HAS_JMP', 'HAS_INDEX', 'HAS_IMM']),
+    dict(key='move',  label='MOVE (Ultimate RISC)',      nops=1,
+         make=lambda: Move(), defs=[], emu='move'),
     dict(key='a14',   label='+ AND OR XOR SHR',          nops=14,
          make=lambda: Acc(has_add=True, has_jmp=True, has_index=True),
          defs=['HAS_SIGN', 'HAS_ADD', 'HAS_JMP', 'HAS_INDEX', 'HAS_LOGIC']),
@@ -590,7 +711,7 @@ def build():
     for d in DESIGNS:
         t = d['make']()
         mem, n, ncode, nro = t.assemble(prog)
-        emu = emu_subleq if d['key'] == 'sq' else emu_acc
+        emu = {'sq': emu_subleq, 'move': emu_move}.get(d['key'], emu_acc)
         vals, cyc, ic = emu(mem, n, len(gold))
         assert vals == gold, (d['key'], len(vals), vals[:6], gold[:6])
         out[d['key']] = dict(mem=mem, n=n, ncode=ncode, nro=nro,
@@ -610,3 +731,5 @@ if __name__ == '__main__':
         print('%-24s %4d %7d %7d %9d %9d %5s' %
               (r['label'], r['nops'], r['ncode'], r['n'], r['instrs'],
                r['cycles'], 'yes' if r['selfmod'] else 'no'))
+
+

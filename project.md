@@ -636,3 +636,114 @@ memory-mapped ports. The expectation is a small area win and a ~1.6x cycle loss,
 so worse on area x time and possibly better on raw gates.
 
 That is an estimate, not a measurement, and it is the obvious next experiment.
+
+---
+
+# Phase 5: the MOVE machine, measured
+
+Phase 4 left one candidate untested: Jones's Ultimate RISC, a machine whose only
+instruction is `MOVE src,dst`, with arithmetic and control flow happening as side
+effects of writing to memory-mapped ports. This phase builds it and runs the same
+suite.
+
+## The design
+
+With an accumulator, `MOVE` needs only two address fields, so the instruction
+packs into a single 16-bit word as `{dst[7:0], src[7:0]}`. Ports occupy the top of
+the 256-word address space:
+
+| port | as source | as destination |
+|---|---|---|
+| ACC | accumulator | `acc <- v` |
+| ADD / SUB | — | `acc <- acc +/- v` |
+| PC / PCZ / PCN | — | jump, jump if `acc == 0`, jump if `acc < 0` |
+| ADR / ADRA | — | index register: `adr <- v`, `adr <- adr + v` |
+| IND | `mem[adr]` | `mem[adr] <- v` |
+| OUT | — | output strobe |
+
+Timing under the same single-port synchronous RAM as every other design:
+`cycles = 1 + (source needs a memory read) + (destination needs a write)`. So
+port-to-port costs 1 cycle, memory-to-port and port-to-memory 2, and
+memory-to-memory 3. Crucially most real moves are memory-to-port or
+port-to-memory, not memory-to-memory.
+
+## Result
+
+| design | ops | words | core | all-RAM | ROM=code | ROM=code+RO | cycles | gate-Mcy |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| **+ LDX LDAX STAX** | **10** | **235** | 1509 | 47295 | 9344 | **7078** | 10333 | 73.1 |
+| + LDI ADDI | 12 | 227 | 1691 | 45927 | 8019 | 7325 | 9814 | **71.9** |
+| **MOVE (Ultimate RISC)** | **1** | 225 | 1606 | 45452 | 13784 | 7329 | 10743 | 78.7 |
+
+**It loses, but barely: 3.5% more gates and 7.7% worse on area x time.** After
+SUBLEQ came in at 67x worse, a one-instruction machine finishing within 4% of the
+best design is the most interesting result in the project.
+
+My phase 4 prediction was "a small area win and a ~1.6x cycle loss". Both halves
+were wrong, in opposite directions, and the reasons are worth recording.
+
+## Why the cycle estimate was wrong
+
+I assumed every MOVE costs 3 cycles: fetch, read source, write destination. In
+practice the accumulator absorbs one end of almost every move — `MOVE x,ADD` has
+no destination write, `MOVE ACC,x` has no source read — so the measured average is
+**2.09 cycles per instruction**, against 1.86 for the accumulator machine.
+
+And it needs **fewer instructions**: 5,130 against 5,564. Memory-to-memory moves
+are a real instruction on this machine, so `mov d,s` is one word where the
+accumulator machine needs `LDA; STA`, and `out s` is one word instead of two.
+Its code is **168 words against 200**.
+
+Net effect on cycles: 10,743 against 10,333, a 4% loss, not 60%.
+
+## Why the area estimate was wrong
+
+I expected the core to shrink, since a MOVE machine has no opcode to decode. It
+grew, by 97 gates. Removing the opcode does not remove the decoding — it moves
+it. The machine needs two 8-bit port comparators (one per address field), an
+index register with its own adder, a multiplexer to substitute `adr` for either
+address field when `IND` is used, and a three-way address mux. A 4-bit opcode
+field feeding a small decoder is simply cheaper than comparing two 8-bit
+addresses against a port range.
+
+## The real cost: constants
+
+Look at the `ROM=code` column, where only code goes in ROM: the MOVE machine is
+**13,784 gates against 9,344** — far worse. But at `ROM=code+RO` the two are
+within 3.5%.
+
+The reason is that a MOVE machine cannot encode a branch target in its
+instruction. `jmp L` is `MOVE K,PC` where `K` is a memory word containing `L`, so
+**every branch site needs its own constant word**. The suite needs 34 constants
+on the MOVE machine against 12 on the accumulator machine — 22 extra words, all
+of them branch targets.
+
+At ~196 gates per RAM word that would be 4,300 gates and the MOVE machine would
+be soundly beaten. At ~4 gates per ROM word it costs about 90 and the race is
+close. **The Ultimate RISC is only competitive because read-only storage is
+cheap** — which is exactly the lever found in phase 4, and it matters roughly
+four times as much to this machine as to the accumulator machine.
+
+## Revised conclusion
+
+The final ranking on this benchmark, cheapest first:
+
+| | gates | area x time |
+|---|---:|---:|
+| 10-instruction accumulator + index register | **7,078** | 73.1 |
+| 12-instruction, with immediates | 7,325 | **71.9** |
+| MOVE / Ultimate RISC | 7,329 | 78.7 |
+| 14-instruction | 7,280 | 75.2 |
+| SUBLEQ | 164,783 | 7,829 |
+
+Three quite different architectures — 10 instructions, 12 instructions, and one
+instruction — land within 3.5% of each other, while a fourth one-instruction
+machine is 23x worse. The spread between them is far smaller than the spread
+created by decisions that are not about the instruction set at all: whether
+read-only data sits in ROM (2,266 gates), and whether variables share storage
+(2,076 gates).
+
+That is the honest end of this investigation. Once the memory hierarchy is right,
+the instruction set stops being the interesting variable — and the choice of
+*which* one instruction matters enormously more than the choice of *how many*.
+SUBLEQ and MOVE are both OISCs, and they differ by a factor of 23.

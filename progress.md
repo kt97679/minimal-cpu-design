@@ -604,3 +604,70 @@ trades opcode decode for port comparators — but every MOVE costs a read, a wri
 and a fetch, ~3 cycles against our 1.86 average. Expectation is a small area win
 and a ~1.6x cycle loss. That is reasoning, not measurement, and it is the obvious
 next experiment.
+
+---
+
+## Session 5 — 2026-09-14: the MOVE machine
+
+### 31. Building Jones's Ultimate RISC
+
+Implemented `rtl/cpu_move.v`: one instruction, `MOVE src,dst`, packed as
+`{dst[7:0], src[7:0]}` in a single 16-bit word, with accumulator, ALU, program
+counter and index register all memory-mapped to ports at the top of the address
+space. Added a `Move` backend and emulator to `sw/suite.py` and a `DUT_MOVE`
+branch to the testbench. Verified on the full suite: 123 correct outputs.
+
+Timing model: `cycles = 1 + (source needs a read) + (destination needs a write)`,
+so port-to-port is 1 cycle, memory-to-port and port-to-memory 2, and
+memory-to-memory 3.
+
+### 32. Both halves of my phase 4 prediction were wrong
+
+I predicted "a small area win and a ~1.6x cycle loss". Measured: a small area
+*loss* and a 4% cycle loss.
+
+**Cycles.** I had assumed 3 cycles per MOVE. But the accumulator absorbs one end
+of nearly every move — `MOVE x,ADD` has no destination write, `MOVE ACC,x` has no
+source read — so the average is 2.09 cycles per instruction against the
+accumulator machine's 1.86. And the machine needs *fewer* instructions (5,130 vs
+5,564) and less code (168 words vs 200), because memory-to-memory move is a real
+instruction: `mov d,s` is one word where the accumulator machine needs two, and
+`out s` likewise. Net: 10,743 cycles against 10,333.
+
+**Area.** I expected the core to shrink without an opcode to decode. It grew by
+97 gates. Removing the opcode relocates the decoding rather than eliminating it:
+the machine needs two 8-bit port comparators, an index register with its own
+adder, a mux to substitute `adr` into either address field for `IND`, and a
+three-way address mux. A 4-bit opcode feeding a small decoder is cheaper than
+comparing two 8-bit addresses against a port range.
+
+### 33. What the MOVE machine actually pays for
+
+The `ROM=code` column is stark: 13,784 gates against the accumulator machine's
+9,344. At `ROM=code+RO` they are within 3.5%.
+
+The cause is that a MOVE machine cannot encode a branch target in its
+instruction. `jmp L` is `MOVE K,PC` with `K` a word holding `L`, so every branch
+site needs a constant word: **34 constants against 12**. Those 22 extra words
+cost ~4,300 gates in RAM and ~90 in ROM. The Ultimate RISC is only competitive
+because read-only storage is cheap — the phase 4 lever, worth about four times
+more to this machine than to the accumulator machine.
+
+### 34. Final standing
+
+```
+10-instruction accumulator + index    7078 gates   73.1 gate-Mcy
+12-instruction, with immediates       7325         71.9
+MOVE / Ultimate RISC                  7329         78.7
+14-instruction                        7280         75.2
+SUBLEQ                              164783       7828.7
+```
+
+Three architectures with 10, 12 and 1 instructions land within 3.5% of each
+other, while a fourth one-instruction machine is 23x worse. The instruction-set
+spread is much smaller than the spread from decisions that are not about the
+instruction set: read-only data in ROM (2,266 gates) and variable pooling (2,076).
+
+The project's closing finding: once the memory hierarchy is right, *which* single
+instruction you pick matters far more than *how many* you have. SUBLEQ and MOVE
+are both OISCs and they differ by a factor of 23.
