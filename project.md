@@ -311,3 +311,148 @@ choice itself:
 Under those rules the expected winner is an 8-12 instruction accumulator machine
 with an index register — essentially a PDP-8 — and the interesting question
 becomes *which* instructions rather than *how many*.
+
+---
+
+# Phase 3: a suite, and a non-degenerate answer
+
+## Setup
+
+Phase 2 ended with the benchmark defeating itself: the cheapest machine that
+computes 100 Fibonacci numbers is a hardwired FSM with no instruction set. Phase
+3 replaces the single program with a **five-program suite that one machine must
+run in a single image**, which is what makes programmability worth paying for.
+
+| benchmark | what it stresses |
+|---|---|
+| 100 Fibonacci numbers | loop, accumulate — continuity with phases 1-2 |
+| insertion sort of 16 words | **indexed addressing**, compare-and-branch |
+| 16x16 multiply, shift-and-add | sign testing, conditional accumulate |
+| Euclid's GCD by subtraction | signed comparison, data-dependent loop |
+| binary to decimal, 5 digits | restoring division by 10, repeated |
+
+123 output values in total, emitted through the port.
+
+Each benchmark is written **once** in a small memory-to-memory virtual ISA
+(`movi mov add sub addi subi out jmp jz jn ldx stx halt`), and each target
+supplies macro expansions. That guarantees every design point runs the identical
+algorithm on identical data, and removes the risk of hand-optimising one
+machine's assembly harder than another's. The virtual program is checked against
+a directly computed model, then every target's expansion is checked by its own
+emulator, then by RTL simulation — three independent checks before any gate is
+counted.
+
+## Design points
+
+| | instructions |
+|---|---|
+| SUBLEQ | 1 |
+| A5 | LDA STA JZ SUB **JN** |
+| A7 | + ADD JMP |
+| A10 | + **LDX LDAX STAX** (8-bit index register) |
+| A14 | + AND OR XOR SHR — *unused by the suite*, to locate the turning point |
+
+`JN` (branch on sign) is in the baseline this time because without it the
+original four-instruction set cannot compare two numbers in bounded time: with
+only branch-on-zero and subtract, deciding `a < b` costs O(value) steps. That is
+a real expressiveness result, and it is why the phase 3 ladder starts at five.
+
+## Results
+
+Gate counts are NAND-equivalent. All five were RTL-simulated over the full suite
+with zero output mismatches.
+
+| design | ops | words | core | all-RAM | ROM+RAM | best | cycles | gate-Mcycles |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| SUBLEQ | 1 | 852 | 1043 | 166655 | n/a | 166655 | 47509 | 7918 |
+| LDA STA JZ SUB JN | 5 | 309 | 958 | 61085 | n/a | 61085 | 14873 | 909 |
+| + ADD JMP | 7 | 259 | 1182 | 51603 | n/a | 51603 | 11013 | 568 |
+| **+ LDX LDAX STAX** | **10** | **247** | 1335 | 49501 | **10581** | **10581** | 10333 | **109** |
+| + AND OR XOR SHR | 14 | 247 | 1543 | 49709 | 10789 | 10789 | 10333 | 112 |
+
+*n/a: the machine needs self-modifying code, so its program cannot live in ROM.*
+
+**The minimum is at 10 instructions**, and it is not close: 5.2x better than the
+7-instruction machine on area x time, and 72x better than SUBLEQ. The curve turns
+up at 14, where four unused instructions add 208 gates and save nothing.
+
+## Why the index register is worth far more than its 153 gates
+
+`LDX/LDAX/STAX` cost 153 gates of core and save only 12 words of program — by the
+phase 2 exchange rate that is roughly break-even. The real effect is
+**categorical**: without an index register, the only way to compute an address is
+to write it into an instruction, so the sort forces the whole program into
+writable memory. With one, no program word is ever written, and the code can live
+in ROM at ~4 gates/word instead of ~196.
+
+So the index register does not win by making the program shorter. It wins by
+**changing which kind of memory the program can live in** — 49501 gates down to
+10581, a 4.7x cut for 153 gates spent. Nothing else in the study has that
+leverage, and no purely local cost model would have predicted it.
+
+This also sharpens the phase 2 finding. There, "put the code in ROM" looked like
+a free 2.4-5.6x that was independent of the instruction set. It is not
+independent at all: **ROM eligibility is an ISA property**, and on a suite with
+any array indexing in it, exactly one instruction group buys it.
+
+## The residue: what dominates at the optimum
+
+At the 10-instruction optimum the budget is:
+
+* **9,246 gates** of memory subsystem, of which ~9,200 is 47 words of *data* RAM
+  (the 16-word sort array plus scalars and constants) and only ~836 is the
+  200-word code ROM;
+* **1,335 gates** of CPU core.
+
+Data has replaced code as the dominant term. That is the correct end state — the
+machine has been optimised until what remains is the problem's own working set,
+which no instruction set can remove. Further ISA work would be chasing 13% of the
+budget.
+
+## SUBLEQ on a realistic workload
+
+SUBLEQ's cost rises sharply once the workload is more than arithmetic in a loop:
+
+* **801 words of code** against 200, because every comparison is a macro. `jn` is
+  5 instructions, `jz` is 5, an indexed load is 9 and an indexed store is 15.
+* **No ROM eligibility**, since indexed access is self-modification by
+  construction — this is not an implementation choice, it is what the
+  architecture is.
+* **47,509 cycles** against 10,333.
+
+Together: **72x worse on area x time**. In phase 2, with code in ROM, SUBLEQ came
+within 1.25x of the best design. The difference is entirely the suite: one tight
+arithmetic loop flatters it, and anything with an array in it does not.
+
+## A correctness note worth recording
+
+SUBLEQ's natural sign test, "branch if `-s <= 0`", is wrong for exactly one
+value: `s = -32768`, where negation overflows. Both the multiply and the divide
+shift an operand through exactly `0x8000`, so the bug is live, and it produced a
+product short by exactly `2 * multiplicand`. The correct expansion tests
+`(s + 1) <= 0`, which costs two more instructions and is exact everywhere except
+`s = +32767`.
+
+Relatedly, all these machines compare by subtracting and testing the sign, which
+is only valid when the difference fits in a word. The sort and GCD inputs are
+therefore kept below 2^14. That constraint is a property of the machines, not of
+the benchmark, and a machine with a carry or overflow flag would not need it.
+
+## Conclusion across all three phases
+
+For building a small computer out of gates and running a realistic mixed
+workload, the answer is an **accumulator machine with about ten instructions**:
+load, store, add, subtract, branch-on-zero, branch-on-sign, unconditional jump,
+and an index register with indexed load and store.
+
+Ranked by how much each decision is worth:
+
+1. **Don't store results you can stream out** — 71% of the phase 1 machine.
+2. **Get an index register, so code can live in ROM** — 4.7x.
+3. **Have ADD and JMP rather than synthesising them** — 1.6x on area x time.
+4. **Don't add instructions the workload never executes** — the 14-op variant
+   pays 208 gates for nothing.
+5. **Core microarchitecture** — 13% of the final budget, and the only term left
+   once the others are done.
+
+One instruction is not cheaper than ten. It was never cheaper than four.

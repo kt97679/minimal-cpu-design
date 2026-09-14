@@ -55,6 +55,32 @@ Three findings:
   Fibonacci numbers has no instruction set at all. See `project.md` for the
   proposed replacement benchmark.
 
+## Phase 3: the answer
+
+Phase 2's benchmark was degenerate — one fixed program doesn't need a program.
+Phase 3 replaces it with a five-benchmark suite the same machine must run
+(Fibonacci, insertion sort, multiply, GCD, binary-to-decimal; 123 outputs),
+written once in a virtual ISA and macro-expanded per target so every machine
+provably runs the same algorithm.
+
+| design | ops | words | core | all-RAM | ROM+RAM | best | cycles | gate-Mcy |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| SUBLEQ | 1 | 852 | 1043 | 166655 | n/a | 166655 | 47509 | 7918 |
+| LDA STA JZ SUB JN | 5 | 309 | 958 | 61085 | n/a | 61085 | 14873 | 909 |
+| + ADD JMP | 7 | 259 | 1182 | 51603 | n/a | 51603 | 11013 | 568 |
+| **+ LDX LDAX STAX** | **10** | **247** | 1335 | 49501 | **10581** | **10581** | 10333 | **109** |
+| + AND OR XOR SHR | 14 | 247 | 1543 | 49709 | 10789 | 10789 | 10333 | 112 |
+
+**Ten instructions wins** — 5.2x better than seven on area x time, 72x better
+than SUBLEQ, with the curve turning up at 14.
+
+The index register is the reason, and not for the obvious reason. It costs 153
+gates and saves only 12 words of program. What it actually does is remove the
+need for self-modifying code, which lets the whole program move from RAM
+(~196 gates/word) into ROM (~4 gates/word): 49501 gates down to 10581. **ROM
+eligibility is an ISA property**, and on any workload with array indexing exactly
+one instruction group buys it.
+
 ## Documents
 
 * **[project.md](project.md)** — what is being compared and why, the fairness
@@ -70,6 +96,7 @@ apt-get install iverilog yosys nextpnr-ice40
 make          # assemble both programs, simulate, verify output, count gates
 make fmax     # place & route both designs, report Fmax across 4 seeds
 make sweep    # phase 2: build and measure all seven design points
+make suite    # phase 3: run the five-program suite across the ISA ladder
 ```
 
 `make` prints cycle counts, a verification pass against an independent Python

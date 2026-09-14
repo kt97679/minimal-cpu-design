@@ -1,4 +1,7 @@
 `timescale 1ns/1ps
+`ifndef NOUT
+ `define NOUT 100
+`endif
 // Generic sweep testbench. Select a design with -DDUT_xxx and pass its memory
 // size with -DNWORDS / -DAWIDTH. Counts cycles to the 100th output strobe and
 // checks the emitted stream against build/expected.txt.
@@ -38,7 +41,7 @@ module tb;
 `endif
 
     integer cyc = 0, nout = 0, errs = 0;
-    reg [15:0] exp [0:99];
+    reg [15:0] exp [0:`NOUT-1];
 
     initial begin
 `ifndef DUT_FSM
@@ -51,14 +54,14 @@ module tb;
     always @(posedge clk) if (!rst) begin
         cyc = cyc + 1;
         if (out_stb) begin
-            if (nout < 100 && out_val !== exp[nout]) begin
+            if (nout < `NOUT && out_val !== exp[nout]) begin
                 errs = errs + 1;
                 if (errs < 5)
                     $display("  mismatch at %0d: got %h expected %h",
                              nout, out_val, exp[nout]);
             end
             nout = nout + 1;
-            if (nout == 100) begin
+            if (nout == `NOUT) begin
                 $display("RESULT cycles=%0d outputs=%0d errors=%0d", cyc, nout, errs);
                 $finish;
             end
@@ -66,7 +69,7 @@ module tb;
     end
 
     initial begin
-        #500000;
+        #50000000;
         $display("RESULT TIMEOUT cyc=%0d outputs=%0d", cyc, nout);
         $finish;
     end

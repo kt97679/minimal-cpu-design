@@ -388,3 +388,107 @@ a five-program suite (Fibonacci, insertion sort, multiply/divide, GCD, binary to
 decimal) scored on area x time — and two rules that need fixing up front, since
 each is worth more than the ISA choice: whether self-modifying code is allowed
 (the ROM/RAM swing), and area x time rather than area alone.
+
+---
+
+## Session 3 — 2026-09-14: phase 3, the five-program suite
+
+### 19. Write each benchmark once, not once per machine
+
+Five benchmarks across five machines is twenty-five assembly programs to write
+and debug, and worse, twenty-five chances to accidentally optimise one machine's
+code harder than another's — which would silently become the result.
+
+Instead defined a small memory-to-memory **virtual ISA** (`movi mov add sub addi
+subi out jmp jz jn ldx stx halt`) and gave each target macro expansions for it.
+Each benchmark is written once; every machine provably runs the same algorithm on
+the same data. Verification is three-layered: the virtual program is checked
+against a directly computed model, each target's expansion against its own
+emulator, and each machine against RTL simulation.
+
+### 20. Choosing algorithms that these machines can actually express
+
+Several algorithm choices were forced by what the machines can do:
+
+* **Multiply MSB-first.** The textbook shift-and-add tests the multiplier's low
+  bit and shifts right, but none of these machines has a right shift. Testing the
+  *high* bit and shifting left needs only `add x,x` and a sign test.
+* **Restoring division the same way.** Division by 10 shifts the dividend left
+  and pulls its MSB into the remainder, again avoiding any right shift.
+* **`jn` rather than a comparison instruction.** All comparison in the suite is
+  "subtract, test sign".
+
+That last one has a consequence: a signed 16-bit `a - b` overflows when the
+operands span too much of the range, and the comparison then lies. The first run
+produced an unsorted array because the test data included 32768 and 65535.
+Constrained the sort and GCD inputs below 2^14, which is a property of the
+machines rather than of the benchmark — a machine with an overflow flag would not
+need it.
+
+### 21. The four-instruction machine cannot run this suite
+
+With only `LDA STA JZ SUB`, there is no bounded-time way to compare two numbers:
+branch-on-zero plus subtract can decide `a < b` only by counting down, which is
+O(value). So the phase 3 ladder starts at five instructions, with `JN` (branch on
+`acc[15]`) in the baseline, and the four-instruction set is recorded as unable to
+express the workload rather than as a slow data point. This is an expressiveness
+result, not an engineering one, and it is the first time in the project that an
+instruction set has failed outright.
+
+### 22. Bugs
+
+**SUBLEQ's sign test is wrong for exactly one value.** The natural expansion of
+"`s < 0`" is "not (`-s <= 0`)", which costs 3 instructions. It misclassifies
+`s = -32768`, because negating it overflows to itself. Both the multiply and the
+divide shift an operand through exactly `0x8000`, so the bug was live: the
+product came out short by exactly `2 * multiplicand`, which is what pointed at a
+single missed conditional add in the second-to-last iteration. Replaced with a
+test of `(s + 1) <= 0`, exact everywhere except `s = +32767`, which the suite
+never produces. Cost: two extra instructions per `jn`.
+
+**Halt detection.** The emulators stopped when an instruction jumped to itself,
+which never fires on the 5-instruction machine because its unconditional jump is
+two instructions (`LDA zero; JZ`), so the halt is a two-instruction loop. It span
+to the 10-million-instruction limit and reported 15,003,124 cycles. Changed both
+emulators and the testbench to stop at the 123rd output, which is the fair
+measure anyway.
+
+**Zero-width concatenation.** `iad + {{(AW-8){1'b0}}, xreg}` is illegal when
+`AW == 8`, which is exactly the width the winning design needs. Plain `iad +
+xreg` zero-extends correctly.
+
+### 23. Results, and the surprise
+
+```
+design                    ops  words    core  all-RAM  ROM+RAM     best   cycles  gate-Mcy
+SUBLEQ                      1    852    1043   166655      n/a   166655    47509    7917.6
+LDA STA JZ SUB JN           5    309     958    61085      n/a    61085    14873     908.5
++ ADD JMP                   7    259    1182    51603      n/a    51603    11013     568.3
++ LDX LDAX STAX            10    247    1335    49501    10581    10581    10333     109.3
++ AND OR XOR SHR           14    247    1543    49709    10789    10789    10333     111.5
+```
+
+The minimum is at **10 instructions**, 5.2x better than 7 on area x time and 72x
+better than SUBLEQ, with the curve turning up at 14 exactly as in phase 2.
+
+The surprise is *why* the index register wins. It costs 153 gates and saves only
+12 words of program, which by the phase 2 exchange rate is break-even. Its real
+effect is categorical: without it, the only way to compute an address is to write
+it into an instruction, so the sort drags the entire program into writable RAM.
+With it, no program word is ever written and the code can sit in ROM at ~4
+gates/word instead of ~196. That turns 49,501 gates into 10,581 — a 4.7x cut
+bought with 153 gates.
+
+This retro-corrects the phase 2 write-up, which treated "put the code in ROM" as
+a lever independent of the instruction set. On any workload containing array
+indexing, **ROM eligibility is an ISA property**, and precisely one instruction
+group buys it.
+
+### 24. Where the budget ends up
+
+At the optimum: 9,246 gates of memory subsystem (of which ~9,200 is 47 words of
+*data* RAM and only ~836 is the 200-word code ROM) against 1,335 gates of core.
+Data has replaced code as the dominant term, which is the right place for the
+optimisation to stop — what remains is the problem's own working set, and no
+instruction set can remove it. Further ISA work would be chasing 13% of the
+budget.

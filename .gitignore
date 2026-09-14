@@ -8,3 +8,4 @@ build/
 *.bin
 sim
 rom_*.v
+p3_*.hex

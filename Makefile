@@ -10,7 +10,7 @@ ACC_WORDS  ?= 136          # program+data+array footprint, printed by sw/asm.py
 SUB_WORDS  ?= 157
 SEEDS      ?= 1 2 3 4
 
-.PHONY: all sim gates ram sweep fmax clean
+.PHONY: all sim gates ram sweep suite fmax clean
 all: sim gates ram
 
 build:
@@ -58,6 +58,10 @@ fmax: | build
 #      every design point, then prints the gate/cycle table)
 sweep:
 	python3 sw/sweep.py
+
+# ---- phase 3: five-program suite across the ISA ladder, scored on area x time
+suite:
+	python3 sw/phase3.py
 
 clean:
 	rm -rf build
