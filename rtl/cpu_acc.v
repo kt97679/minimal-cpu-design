@@ -7,6 +7,8 @@
 //   HAS_JMP       5 JMP a
 //   HAS_CTR       6 LDC i   7 DJNZ a        (8-bit counter register)
 //   HAS_LOGIC     8 AND m   9 OR m    10 XOR m  11 SHR
+//   HAS_IMM       6 LDI i   7 ADDI i  (12-bit sign-extended immediate;
+//                 mutually exclusive with HAS_CTR, which uses the same slots)
 //   HAS_SIGN     12 JN a                        (branch on acc[15])
 //   HAS_INDEX    13 LDX m  14 LDAX m  15 STAX m (8-bit index register X)
 //
@@ -42,6 +44,9 @@ module cpu_acc #(parameter AW = 8) (
 `ifdef HAS_INDEX
     wire [AW-1:0] xad  = iad + xreg;   // xreg zero-extends to AW
 `endif
+`ifdef HAS_IMM
+    wire [15:0]   imm  = {{4{mdin[11]}}, mdin[11:0]};
+`endif
 
     always @* begin
         maddr  = pc;
@@ -58,6 +63,9 @@ module cpu_acc #(parameter AW = 8) (
 `ifdef HAS_CTR
                 4'd6: begin maddr = pc; ifetch = 1'b1; end           // LDC
                 4'd7: begin maddr = ctr_go ? iad : pc; ifetch = 1'b1; end
+`endif
+`ifdef HAS_IMM
+                4'd6, 4'd7: begin maddr = pc; ifetch = 1'b1; end   // LDI / ADDI
 `endif
 `ifdef HAS_SIGN
                 4'd12: begin maddr = acc[15] ? iad : pc; ifetch = 1'b1; end
@@ -101,6 +109,10 @@ module cpu_acc #(parameter AW = 8) (
                             pc    <= (ctr_go ? iad : pc) + 1'b1;
                             state <= S_D;
                         end
+`endif
+`ifdef HAS_IMM
+                        4'd6: begin acc <= imm;       pc <= pc + 1'b1; state <= S_D; end
+                        4'd7: begin acc <= acc + imm; pc <= pc + 1'b1; state <= S_D; end
 `endif
 `ifdef HAS_SIGN
                         4'd12: begin

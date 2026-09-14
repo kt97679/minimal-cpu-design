@@ -255,8 +255,11 @@ def aw(n):
 
 def yosys_nand(read_cmds, top):
     """Map a design to 2-input NANDs + plain DFFs and return (nand, dff)."""
+    # `flatten` is essential: yosys `stat` reports per module, so without it a
+    # design with submodules is counted from whichever module prints first.
     script = (read_cmds + f"""
         hierarchy -top {top}
+        flatten
         proc; opt; fsm; opt; memory; opt
         techmap; opt -full
         dfflegalize -cell $_DFF_P_ 0

@@ -226,19 +226,23 @@ Gate counts are NAND-equivalent (2-input NANDs after `abc -g NAND`, each D
 flip-flop counted as 6). All seven designs were RTL-simulated and verified to
 emit F0..F99 correctly.
 
+*(Corrected in phase 4: the original table under-counted every design with
+submodules, because yosys `stat` reports per module. Numbers below are the
+corrected ones; no conclusion changed.)*
+
 | design | ops | words | core | RAM code | **total** | ROM code | **total** | cycles |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| SUBLEQ | 1 | 50 | 807 | 9822 | **10629** | 1096 | **1903** | 4147 |
-| LDA STA JZ SUB | 4 | 29 | 704 | 5719 | **6423** | 1237 | **1941** | 2067 |
-| + ADD JMP | 6 | 18 | 887 | 3577 | **4464** | 843 | **1730** | 1185 |
-| **+ LDC DJNZ** | **8** | **13** | 1078 | 2600 | **3678** | 448 | **1526** | 843 |
-| + AND OR XOR SHR | 12 | 13 | 1293 | 2600 | **3893** | 448 | **1741** | 843 |
+| SUBLEQ | 1 | 50 | 995 | 9822 | **10817** | 1274 | **2269** | 4147 |
+| LDA STA JZ SUB | 4 | 29 | 865 | 5719 | **6584** | 1404 | **2269** | 2067 |
+| + ADD JMP | 6 | 18 | 1050 | 3577 | **4627** | 1026 | **2076** | 1185 |
+| **+ LDC DJNZ** | **8** | **13** | 1240 | 2600 | **3840** | 587 | **1827** | 843 |
+| + AND OR XOR SHR | 12 | 13 | 1456 | 2600 | **4056** | 587 | **2043** | 843 |
 | 2-register machine | 9 | 9 | 1071 | 1820 | **2891** | 72 | **1143** | 252 |
 | hardwired FSM | 0 | 0 | 884 | 0 | **884** | 0 | **884** | 150 |
 
 ### The curve does turn up, at 12 instructions
 
-Going 1 -> 4 -> 6 -> 8 instructions cuts total gates by 2.9x, because each added
+Going 1 -> 4 -> 6 -> 8 instructions cuts total gates by 2.8x, because each added
 instruction removes program words, and a word costs ~196 gates while an added
 opcode costs ~100-200. Going 8 -> 12 adds 215 gates of ALU and decode and saves
 **zero** words, because the program never uses AND/OR/XOR/SHR. That is the
@@ -249,9 +253,10 @@ only if it removes at least one word of program per ~196 gates it adds.
 
 * **1 word of RAM = ~196 gates.** One saved instruction is worth about a quarter
   of the entire V1 CPU core.
-* **1 word of ROM = 3-8 gates**, 25-70x cheaper. Once the output array is gone
+* **1 word of ROM = 4-17 gates** depending on how much content ABC can share,
+  against ~196 for RAM. Once the output array is gone
   none of these programs self-modify, so their code does not need writable
-  storage. Moving it to ROM cuts totals by 2.4-5.6x, which is the single largest
+  storage. Moving it to ROM cuts totals by 2.1-4.8x, which is the single largest
   lever in the whole study — larger than the entire instruction set question.
 * **A 16-bit register = ~130 gates**, cheaper than the ~196-gate RAM word it
   replaces, and it needs no address bits in the instruction. This is why the
@@ -259,9 +264,9 @@ only if it removes at least one word of program per ~196 gates it adds.
 
 ### ROM flattens the ISA question
 
-With code in RAM, SUBLEQ costs 2.9x the best design. With code in ROM it costs
-1.25x, and is actually *cheaper than V1* — its 807-gate core is smaller than V1's
-704-gate core plus V1's larger program. When memory is cheap, code density stops
+With code in RAM, SUBLEQ costs 2.8x the best design. With code in ROM it costs
+1.24x, and comes out *exactly level with V1* — its larger core is offset by V1
+needing more program words. When memory is cheap, code density stops
 mattering and the comparison collapses back to core size, where the
 one-instruction machine was never far behind.
 
@@ -362,23 +367,25 @@ a real expressiveness result, and it is why the phase 3 ladder starts at five.
 Gate counts are NAND-equivalent. All five were RTL-simulated over the full suite
 with zero output mismatches.
 
+*(Corrected in phase 4, same counting bug as above.)*
+
 | design | ops | words | core | all-RAM | ROM+RAM | best | cycles | gate-Mcycles |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| SUBLEQ | 1 | 852 | 1043 | 166655 | n/a | 166655 | 47509 | 7918 |
-| LDA STA JZ SUB JN | 5 | 309 | 958 | 61085 | n/a | 61085 | 14873 | 909 |
-| + ADD JMP | 7 | 259 | 1182 | 51603 | n/a | 51603 | 11013 | 568 |
-| **+ LDX LDAX STAX** | **10** | **247** | 1335 | 49501 | **10581** | **10581** | 10333 | **109** |
-| + AND OR XOR SHR | 14 | 247 | 1543 | 49709 | 10789 | 10789 | 10333 | 112 |
+| SUBLEQ | 1 | 852 | 1241 | 166853 | n/a | 166853 | 47509 | 7927 |
+| LDA STA JZ SUB JN | 5 | 309 | 1134 | 61261 | n/a | 61261 | 14873 | 911 |
+| + ADD JMP | 7 | 258 | 1360 | 51587 | n/a | 51587 | 11013 | 568 |
+| **+ LDX LDAX STAX** | **10** | **246** | 1508 | 49480 | **11420** | **11420** | 10333 | **118** |
+| + AND OR XOR SHR | 14 | 246 | 1711 | 49683 | 11623 | 11623 | 10333 | 120 |
 
 *n/a: the machine needs self-modifying code, so its program cannot live in ROM.*
 
-**The minimum is at 10 instructions**, and it is not close: 5.2x better than the
-7-instruction machine on area x time, and 72x better than SUBLEQ. The curve turns
-up at 14, where four unused instructions add 208 gates and save nothing.
+**The minimum is at 10 instructions**, and it is not close: 4.8x better than the
+7-instruction machine on area x time, and 67x better than SUBLEQ. The curve turns
+up at 14, where four unused instructions add 203 gates and save nothing.
 
-## Why the index register is worth far more than its 153 gates
+## Why the index register is worth far more than its 148 gates
 
-`LDX/LDAX/STAX` cost 153 gates of core and save only 12 words of program — by the
+`LDX/LDAX/STAX` cost 148 gates of core and save only 12 words of program — by the
 phase 2 exchange rate that is roughly break-even. The real effect is
 **categorical**: without an index register, the only way to compute an address is
 to write it into an instruction, so the sort forces the whole program into
@@ -386,8 +393,8 @@ writable memory. With one, no program word is ever written, and the code can liv
 in ROM at ~4 gates/word instead of ~196.
 
 So the index register does not win by making the program shorter. It wins by
-**changing which kind of memory the program can live in** — 49501 gates down to
-10581, a 4.7x cut for 153 gates spent. Nothing else in the study has that
+**changing which kind of memory the program can live in** — 49480 gates down to
+11420, a 4.3x cut for 148 gates spent. Nothing else in the study has that
 leverage, and no purely local cost model would have predicted it.
 
 This also sharpens the phase 2 finding. There, "put the code in ROM" looked like
@@ -399,10 +406,10 @@ any array indexing in it, exactly one instruction group buys it.
 
 At the 10-instruction optimum the budget is:
 
-* **9,246 gates** of memory subsystem, of which ~9,200 is 47 words of *data* RAM
-  (the 16-word sort array plus scalars and constants) and only ~836 is the
+* **9,912 gates** of memory subsystem, of which ~9,000 is 47 words of *data* RAM
+  (the 16-word sort array plus scalars and constants) and the rest is the
   200-word code ROM;
-* **1,335 gates** of CPU core.
+* **1,508 gates** of CPU core.
 
 Data has replaced code as the dominant term. That is the correct end state — the
 machine has been optimised until what remains is the problem's own working set,
@@ -420,8 +427,8 @@ SUBLEQ's cost rises sharply once the workload is more than arithmetic in a loop:
   architecture is.
 * **47,509 cycles** against 10,333.
 
-Together: **72x worse on area x time**. In phase 2, with code in ROM, SUBLEQ came
-within 1.25x of the best design. The difference is entirely the suite: one tight
+Together: **67x worse on area x time**. In phase 2, with code in ROM, SUBLEQ came
+within 1.24x of the best design. The difference is entirely the suite: one tight
 arithmetic loop flatters it, and anything with an array in it does not.
 
 ## A correctness note worth recording
@@ -448,11 +455,184 @@ and an index register with indexed load and store.
 Ranked by how much each decision is worth:
 
 1. **Don't store results you can stream out** — 71% of the phase 1 machine.
-2. **Get an index register, so code can live in ROM** — 4.7x.
+2. **Get an index register, so code can live in ROM** — 4.3x.
 3. **Have ADD and JMP rather than synthesising them** — 1.6x on area x time.
 4. **Don't add instructions the workload never executes** — the 14-op variant
-   pays 208 gates for nothing.
+   pays 203 gates for nothing.
 5. **Core microarchitecture** — 13% of the final budget, and the only term left
    once the others are done.
 
 One instruction is not cheaper than ten. It was never cheaper than four.
+
+---
+
+# Phase 4: can anything beat it? A survey, and three more levers
+
+Phase 3 landed on a 10-instruction accumulator machine. This phase asks whether
+any *other* instruction set does better, by (a) reading what has actually been
+tried, and (b) testing the ideas that survive contact with our cost model.
+
+## What the literature says
+
+**Sakamoto, Ahmed, Anderson and Hara-Azumi, "Subleq⊖: An Area-Efficient
+Two-Instruction-Set Computer"** is the closest published work to phases 1-3.
+They start from a SUBLEQ OISC and add exactly one instruction — a bit-reversed
+subleq — chosen because it reuses the existing subtractor and turns SUBLEQ's
+O(w) right shift into O(1). On a Virtex-6 they measure the baseline SUBLEQ at
+147 LUTs and the two-instruction version at 195, a 1.33x area cost for a 2.78x
+geometric-mean speedup across twelve benchmarks. Two alternative extensions that
+added *dedicated* hardware (a shifter, a multiplier) cost 1.87x and 5.86x area
+and were slower in wall-clock terms, because the clock period grew more than the
+cycle count shrank.
+
+That is the same shape as our result, arrived at independently: **instructions
+that reuse the existing datapath are nearly free, and instructions that add new
+datapath rarely pay.** Their 1.33x-for-2.78x is our `ADD`/`JMP`/index-register
+story; their shifter and multiplier are our `AND/OR/XOR/SHR` variant.
+
+**Martin Schoeberl's Lipsi** ("probably the smallest processor in the world") is
+an 8-bit **accumulator** machine at under 100 logic elements, with its memory in
+on-chip RAM. Schoeberl is explicit that he chose an accumulator over a register
+file deliberately. **Ultrasmall** and **Supersmall** take the other route — a
+2-bit-serial MIPS datapath — and pay about 22 cycles per instruction for it.
+**SERV**, the smallest RISC-V core, is fully bit-serial. Puffitsch's Ø processor
+generates hardware only for the instructions a given program actually uses,
+which is our 14-instruction result turned into a tool.
+
+**Jones's "The Ultimate RISC" (1988)** is the other classic minimum: a single
+`MOVE mem,mem` instruction with a memory-mapped ALU and a memory-mapped program
+counter. Jones notes in the paper that the three address fields reduce to two if
+an accumulator is used — which is most of the distance to our design already.
+
+Across all of it, the convergent answer for minimum area is an **accumulator
+machine with a narrow instruction set**. Nothing in the literature suggests a
+fundamentally different ISA shape wins; the disagreements are about datapath
+width and about how instructions are encoded.
+
+## A counting bug, found and fixed
+
+While testing these ideas, the memory-subsystem figure came out *identical* to
+the data RAM alone, which was implausible. Cause: yosys `stat` reports cell
+counts **per module**, and the parser was reading whichever module printed
+first. Every design with submodules — all the `comp_*` cores and both ROM splits
+in phases 2 and 3 — was therefore counted from a fragment.
+
+Fixed by adding `flatten` before technology mapping. All phase 2 and phase 3
+tables above have been recomputed and corrected. **No conclusion changed**: the
+phase 2 minimum is still at 8 instructions, the phase 3 minimum still at 10, and
+the turn-up points are unmoved. The corrected phase 3 optimum is 11,420 gates
+rather than the 10,581 originally reported.
+
+## Three levers tested
+
+### 1. Read-only data does not belong in writable RAM — 2,266 gates
+
+At the phase 3 optimum, 12 of the 47 data words were **constants**, sitting in
+gate-built RAM at ~196 gates each because the memory map put all data in one
+region. They are never written. Splitting the map so the ROM covers code *and*
+constants moves them to ~4 gates/word.
+
+This needs no ISA change at all — it is a memory-map decision — but it is only
+available to a machine that already qualifies for ROM, so it compounds with the
+index register rather than being independent of it.
+
+### 2. Variables do not each need their own word — 2,076 gates
+
+The five benchmarks run in sequence, so their working sets never overlap. Phase
+3 gave all 18 scalars their own word; pooling them by liveness needs only
+**seven** (the maximum live at any point, in the sort and the decimal loop).
+Eleven words of RAM removed, for nothing but a renaming.
+
+This is a compiler question, not an architecture one. That it is worth more than
+every remaining instruction-set decision put together is itself the finding.
+
+### 3. Immediate operands — no area win, small time win
+
+Once constants cost ~4 gates in ROM, an immediate field has almost nothing left
+to save. Adding `LDI`/`ADDI` (12-bit sign-extended) removes the 8 constants that
+fit, but costs 182 gates of core: **net 247 gates worse on area**. It does cut
+519 cycles by turning two-cycle operand fetches into one-cycle immediates, so it
+wins narrowly on area x time (71.9 against 73.1) and loses on area.
+
+That is a genuine and slightly surprising result: immediates are an
+*area* optimisation only when constants are expensive to store.
+
+### Narrowing the data RAM's address decoder — 12 gates
+
+Addressing the data RAM with `ceil(log2(NDATA))` bits instead of the full address
+width saves 12 gates. Measured and discarded.
+
+## Results
+
+Same five-program suite, all RTL-verified, corrected counting:
+
+| design | ops | words | core | all-RAM | ROM=code | ROM=code+RO | cycles | gate-Mcy |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| SUBLEQ | 1 | 841 | 1241 | 164783 | n/a | n/a | 47509 | 7829 |
+| LDA STA JZ SUB JN | 5 | 298 | 1134 | 59125 | n/a | n/a | 14873 | 879 |
+| + ADD JMP | 7 | 247 | 1311 | 49477 | n/a | n/a | 11013 | 545 |
+| **+ LDX LDAX STAX** | **10** | **235** | 1509 | 47295 | 9344 | **7078** | 10333 | 73.1 |
+| + LDI ADDI | 12 | 227 | 1691 | 45927 | 8019 | 7325 | 9814 | **71.9** |
+| + AND OR XOR SHR | 14 | 235 | 1711 | 47497 | 9546 | 7280 | 10333 | 75.2 |
+
+**The 10-instruction machine is still the answer**, now at **7,078 gates** —
+1.61x smaller than the corrected phase 3 figure of 11,420, from two changes that
+are not instruction-set changes at all.
+
+The 12-instruction immediate variant ties it (71.9 vs 73.1 on area x time) while
+being larger, so the choice between them depends on which you are optimising.
+The 14-instruction variant remains strictly worse.
+
+## Where the remaining 7,078 gates are
+
+| | gates | share |
+|---|---:|---|
+| 16-word sort array (RAM) | ~2,600 | 37% |
+| CPU core | 1,509 | 21% |
+| 7 scalar variables (RAM) | ~1,130 | 16% |
+| 212-word code+constant ROM | ~912 | 13% |
+| RAM decode, mux, glue | ~930 | 13% |
+
+Over half is the benchmark's own working set. **No instruction set can remove
+it**, which is the sense in which this optimisation is finished.
+
+## Two ideas tested and rejected on measurement
+
+**Narrower data words.** Lipsi is 8-bit; SERV is bit-serial. If a narrower word
+made storage cheaper, that would beat every ISA change left. It does not. Storing
+the same 368 bits costs:
+
+| organisation | gates | per bit |
+|---|---:|---:|
+| 23 x 16 bit | 4,597 | 12.49 |
+| 46 x 8 bit | 4,626 | 12.57 |
+| 92 x 4 bit | 4,705 | 12.79 |
+| 368 x 1 bit | 5,296 | 14.39 |
+
+Cost is set by **bits stored, not words**, and narrowing the word only multiplies
+the per-word decoder. A 16-bit benchmark on an 8-bit machine would store the same
+bits, need double-length arithmetic routines, and shrink only the core. Lipsi's
+8-bit choice is right for its cost model — FPGA logic elements with free block
+RAM — and wrong for ours, where memory is built from gates.
+
+**Removing instructions from the winner.** `JZ` looks redundant next to `JN`, and
+its 16-input zero-detect is ~25 gates. But synthesising `jz` from `jn` costs
+roughly 20 extra ROM words and cycles in every loop, for a net loss. The
+10-instruction set is a local optimum in both directions.
+
+## The one thing left untested
+
+A **MOVE machine** in Jones's sense — one instruction, `MOVE src,dst`, with a
+memory-mapped accumulator, ALU and program counter — is the most plausible
+untested alternative, and with an accumulator its instruction fits in one 16-bit
+word (two 8-bit address fields) rather than SUBLEQ's three.
+
+Reasoning about it against our cost model: code size would be close to the
+accumulator machine's, since both spend about one word per operation. The core
+would trade opcode decode for port-address comparators, probably a wash. But
+every MOVE needs a source read *and* a destination write plus its own fetch — 3
+cycles against our average of 1.86 — and indexed access would need extra
+memory-mapped ports. The expectation is a small area win and a ~1.6x cycle loss,
+so worse on area x time and possibly better on raw gates.
+
+That is an estimate, not a measurement, and it is the obvious next experiment.

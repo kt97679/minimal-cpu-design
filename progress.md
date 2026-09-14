@@ -492,3 +492,115 @@ Data has replaced code as the dominant term, which is the right place for the
 optimisation to stop — what remains is the problem's own working set, and no
 instruction set can remove it. Further ISA work would be chasing 13% of the
 budget.
+
+---
+
+## Session 4 — 2026-09-14: literature survey and further reduction
+
+### 25. Reading before building
+
+Surveyed published work on minimal processors before touching the RTL.
+
+The most directly relevant is Sakamoto, Ahmed, Anderson and Hara-Azumi's
+"Subleq⊖: An Area-Efficient Two-Instruction-Set Computer". They add exactly one
+instruction to SUBLEQ — a bit-reversed subleq that reuses the existing
+subtractor — and measure 147 LUTs to 195 LUTs (1.33x) for a 2.78x geometric-mean
+speedup, while two alternatives that added dedicated shifter or multiplier
+hardware cost 1.87x and 5.86x and were *slower* in wall-clock terms. That is
+independently the same finding as our phase 2 and 3 turn-up: instructions that
+reuse the datapath are nearly free, instructions that add datapath rarely pay.
+
+Also surveyed: Schoeberl's **Lipsi** (8-bit accumulator, <100 logic elements,
+explicitly chose accumulator over a register file), **Ultrasmall/Supersmall**
+(2-bit-serial MIPS, ~22 cycles per instruction), **SERV** (bit-serial RISC-V),
+Puffitsch's **Ø processor** (generates hardware only for instructions the program
+uses — our 14-instruction result as a tool), and Jones's **"The Ultimate RISC"**
+(1988), a single `MOVE mem,mem` with memory-mapped ALU and PC. Jones notes in
+that paper that three address fields reduce to two with an accumulator.
+
+Convergent answer in the literature: accumulator machine, narrow instruction
+set. The live disagreements are about datapath width and encoding, not shape.
+
+### 26. Sizing the prize before building
+
+Broke down the 47 data words at the phase 3 optimum: 16 array, 19 mutable
+scalars, **12 constants**. The constants were sitting in writable RAM at ~196
+gates each for values that never change — 2,352 gates of pure waste, and 22% of
+the machine. Also found `_t0` allocated unconditionally although only the
+no-ADD backend uses it.
+
+### 27. The counting bug
+
+While isolating the ROM/RAM split, the combined memory-subsystem figure came out
+as **exactly** the data RAM measured alone — 4,597 either way. An improbable
+coincidence, so it was worth chasing.
+
+Cause: yosys `stat` prints cell counts **per module**, and the parser took the
+first block after "Printing statistics". For a flat design that is the whole
+design; for anything with submodules it is a fragment. Every `comp_*` core and
+both ROM splits in phases 2 and 3 were affected — the CPU cores were being
+counted without the CPU inside them.
+
+Fixed by adding `flatten` before technology mapping. Recomputed and corrected
+every affected table in `project.md` and `README.md`. **No conclusion moved**:
+phase 2's minimum is still 8 instructions, phase 3's still 10, both turn-up
+points unchanged. The phase 3 optimum corrects from 10,581 to 11,420 gates.
+
+Worth recording why it was caught: not by a test, but by a number being *too
+round*. Two independently computed quantities agreeing exactly is a signal.
+
+### 28. Three levers
+
+**Read-only data out of RAM.** Reordered the memory map to code, constants,
+scalars, array, so the ROM region covers code *and* constants. No ISA change,
+**2,266 gates saved**. It only compounds with the index register, though, since
+a self-modifying machine has no ROM region at all.
+
+**Variable pooling.** The five benchmarks run in sequence and their working sets
+never overlap, so 18 scalars pool down to **seven** — the maximum live at any
+one point. Eleven RAM words removed for a renaming: **2,076 gates**. This is a
+compiler decision worth more than every remaining ISA decision combined, which
+is itself the finding.
+
+**Immediates.** Added `LDI`/`ADDI` with a 12-bit sign-extended field. Once
+constants live in ROM at ~4 gates each, immediates have almost nothing left to
+save: they remove 8 constant words but cost 182 gates of core, a **net 247-gate
+loss**. They do save 519 cycles, so the 12-instruction machine wins narrowly on
+area x time (71.9 vs 73.1) and loses on area. Immediates turn out to be an area
+optimisation only when constants are expensive to store.
+
+Also measured and discarded: narrowing the data RAM's address decoder to
+`ceil(log2(NDATA))` bits, worth 12 gates.
+
+### 29. Testing the narrow-datapath hypothesis
+
+Lipsi is 8-bit and SERV is bit-serial, so if a narrower word made *storage*
+cheaper it would dominate everything else. Measured the same 368 bits in four
+organisations:
+
+```
+ 23 x 16b -> 4597 gates (12.49/bit)
+ 46 x  8b -> 4626 gates (12.57/bit)
+ 92 x  4b -> 4705 gates (12.79/bit)
+368 x  1b -> 5296 gates (14.39/bit)
+```
+
+Cost is set by bits stored, not by words; narrowing the word only multiplies the
+per-word decoder. So an 8-bit machine would store the same bits, need
+double-length arithmetic, and shrink only the core. Lipsi's choice is right for
+its cost model — FPGA logic elements with free block RAM — and wrong for ours.
+
+### 30. Result
+
+The 10-instruction machine is still the answer, now at **7,078 gates**, 1.61x
+below the corrected phase 3 figure, from two changes that are not instruction-set
+changes at all. Remaining budget: 37% the benchmark's own 16-word array, 21%
+core, 16% scalars, 13% ROM, 13% glue. Over half is the problem's working set,
+which no ISA can remove.
+
+Left untested: a MOVE machine in Jones's sense. With an accumulator its
+instruction fits one 16-bit word, code size should be close to ours, and the core
+trades opcode decode for port comparators — but every MOVE costs a read, a write
+and a fetch, ~3 cycles against our 1.86 average. Expectation is a small area win
+and a ~1.6x cycle loss. That is reasoning, not measurement, and it is the obvious
+next experiment.

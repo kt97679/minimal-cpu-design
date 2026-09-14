@@ -37,9 +37,27 @@ def s16(x):
 
 
 # --------------------------------------------------------------- the suite
+POOLING = True      # set False to give every variable its own word (phase 3)
+
+
 def suite():
-    P = []
-    e = P.append
+    # The five benchmarks run one after another, so their variables do not each
+    # need their own word of RAM -- names are pooled into v0..v6, which is the
+    # maximum number live at any point (in the sort and the decimal loop).
+    # This is liveness-based coalescing done by hand; no ISA change.
+    P, ren = [], {}
+
+    def e(op):
+        P.append(tuple(op[:1]) +
+                 tuple(ren.get(x, x) if isinstance(x, str) else x
+                       for x in op[1:]))
+
+    def pool(**m):
+        ren.clear()
+        if POOLING:
+            ren.update(m)
+
+    pool(a='v0', b='v1', n='v2')
 
     # ---- B1: 100 Fibonacci numbers, two per iteration
     e(('movi', 'a', 0)); e(('movi', 'b', 1)); e(('movi', 'n', 50))
@@ -50,6 +68,7 @@ def suite():
     e(('label', 'f2'))
 
     # ---- B2: insertion sort of ARRN words, then emit them in order
+    pool(i='v0', key='v1', j='v2', t='v3', u='v4', k='v5')
     e(('movi', 'i', 1))
     e(('label', 's1'))
     e(('ldx', 'key', 'ARR', 'i'))
@@ -76,6 +95,7 @@ def suite():
     e(('mov', 'u', 'i')); e(('subi', 'u', ARRN)); e(('jn', 'u', 's5'))
 
     # ---- B3: 16x16 -> 16 multiply, shift and add, MSB first
+    pool(x='v0', y='v1', p='v2', cnt='v3')
     e(('movi', 'x', MULX)); e(('movi', 'y', MULY))
     e(('movi', 'p', 0)); e(('movi', 'cnt', 16))
     e(('label', 'm1'))
@@ -88,6 +108,7 @@ def suite():
     e(('label', 'm4')); e(('out', 'p'))
 
     # ---- B4: Euclid's GCD by repeated subtraction
+    pool(a='v0', b='v1', t='v2')
     e(('movi', 'a', GCDA)); e(('movi', 'b', GCDB))
     e(('label', 'g1'))
     e(('mov', 't', 'a')); e(('sub', 't', 'b')); e(('jz', 't', 'g3'))
@@ -98,6 +119,7 @@ def suite():
 
     # ---- B5: binary to decimal, least significant digit first.
     # Restoring division by 10: only left shifts and sign tests are needed.
+    pool(v='v0', dcnt='v1', q='v2', rem='v3', cnt='v4', w='v5', t='v6')
     e(('movi', 'v', DECV)); e(('movi', 'dcnt', DECN))
     e(('label', 'd0'))
     e(('movi', 'q', 0)); e(('movi', 'rem', 0))
@@ -237,11 +259,12 @@ class Target:
                     self.gen(op)
             ncode = len(self.words)
             addr, sym = ncode, {'@': 0}
-            for v in self.vars:
-                sym[v] = addr
-                addr += 1
-            for c in self.consts:
+            for c in self.consts:            # read-only: can live in ROM
                 sym[c] = addr
+                addr += 1
+            self.nro = addr
+            for v in self.vars:              # mutable: must be RAM
+                sym[v] = addr
                 addr += 1
             sym['ARR'] = addr
             addr += ARRN
@@ -266,25 +289,31 @@ class Target:
                 mem[self.sym[c]] = (-self.sym[spec[1]]) & MASK
         for i, v in enumerate(ARR0):
             mem[self.sym['ARR'] + i] = v & MASK
-        return mem, n, ncode
+        return mem, n, ncode, self.nro
 
 
 # --------------------------------------------------------- accumulator target
-LDA, STA, JZ, SUB, ADD, JMP = 0, 1, 2, 3, 4, 5
+LDA, STA, JZ, SUB, ADD, JMP, LDI, ADDI = 0, 1, 2, 3, 4, 5, 6, 7
 JN, LDX, LDAX, STAX = 12, 13, 14, 15
 ACYC = {LDA: 2, STA: 2, SUB: 2, ADD: 2, LDX: 2, LDAX: 2, STAX: 2,
-        JZ: 1, JMP: 1, JN: 1}
+        JZ: 1, JMP: 1, JN: 1, LDI: 1, ADDI: 1}
 
 
 class Acc(Target):
-    def __init__(self, has_add=False, has_jmp=False, has_index=False):
+    def __init__(self, has_add=False, has_jmp=False, has_index=False,
+                 has_imm=False):
         super().__init__()
         self.has_add, self.has_jmp, self.has_index = has_add, has_jmp, has_index
+        self.has_imm = has_imm
         self.self_modifying = not has_index
-        self.var('_t0')
+        if not has_add:
+            self.var('_t0')
 
     def i(self, opc, name, off=0):
         self.ref(name, off, opc)
+
+    def imm(self, opc, value):
+        self.lit((opc << 12) | (value & 0xFFF))
 
     def jump(self, L):
         if self.has_jmp:
@@ -311,7 +340,12 @@ class Acc(Target):
     def gen(self, op):
         k = op[0]
         if k == 'movi':
-            self.var(op[1]); self.i(LDA, self.K(op[2])); self.i(STA, op[1])
+            self.var(op[1])
+            if self.has_imm and -2048 <= op[2] < 2048:
+                self.imm(LDI, op[2])
+            else:
+                self.i(LDA, self.K(op[2]))
+            self.i(STA, op[1])
         elif k == 'mov':
             self.var(op[1]); self.var(op[2])
             self.i(LDA, op[2]); self.i(STA, op[1])
@@ -320,12 +354,15 @@ class Acc(Target):
         elif k == 'sub':
             self.var(op[1]); self.var(op[2])
             self.i(LDA, op[1]); self.i(SUB, op[2]); self.i(STA, op[1])
-        elif k == 'addi':
+        elif k in ('addi', 'subi'):
             self.var(op[1])
-            self.i(LDA, op[1]); self.i(SUB, self.K(-op[2])); self.i(STA, op[1])
-        elif k == 'subi':
-            self.var(op[1])
-            self.i(LDA, op[1]); self.i(SUB, self.K(op[2])); self.i(STA, op[1])
+            delta = op[2] if k == 'addi' else -op[2]
+            self.i(LDA, op[1])
+            if self.has_imm and -2048 <= delta < 2048:
+                self.imm(ADDI, delta)
+            else:
+                self.i(SUB, self.K(-delta))
+            self.i(STA, op[1])
         elif k == 'out':
             self.var(op[1]); self.i(LDA, op[1]); self.i(STA, 'port')
         elif k == 'jmp':
@@ -386,6 +423,11 @@ def emu_acc(mem, n, nout, limit=10 ** 7):
             acc = (acc + mem[ad]) & MASK
         elif opc == JMP:
             pc = ad
+        elif opc == LDI:
+            acc = ad if ad < 0x800 else ad - 0x1000
+            acc &= MASK
+        elif opc == ADDI:
+            acc = (acc + (ad if ad < 0x800 else ad - 0x1000)) & MASK
         elif opc == JN:
             if acc & 0x8000:
                 pc = ad
@@ -530,6 +572,10 @@ DESIGNS = [
     dict(key='a10',   label='+ LDX LDAX STAX',           nops=10,
          make=lambda: Acc(has_add=True, has_jmp=True, has_index=True),
          defs=['HAS_SIGN', 'HAS_ADD', 'HAS_JMP', 'HAS_INDEX']),
+    dict(key='a12',   label='+ LDI ADDI (immediates)',   nops=12,
+         make=lambda: Acc(has_add=True, has_jmp=True, has_index=True,
+                          has_imm=True),
+         defs=['HAS_SIGN', 'HAS_ADD', 'HAS_JMP', 'HAS_INDEX', 'HAS_IMM']),
     dict(key='a14',   label='+ AND OR XOR SHR',          nops=14,
          make=lambda: Acc(has_add=True, has_jmp=True, has_index=True),
          defs=['HAS_SIGN', 'HAS_ADD', 'HAS_JMP', 'HAS_INDEX', 'HAS_LOGIC']),
@@ -543,11 +589,12 @@ def build():
     out = {}
     for d in DESIGNS:
         t = d['make']()
-        mem, n, ncode = t.assemble(prog)
+        mem, n, ncode, nro = t.assemble(prog)
         emu = emu_subleq if d['key'] == 'sq' else emu_acc
         vals, cyc, ic = emu(mem, n, len(gold))
         assert vals == gold, (d['key'], len(vals), vals[:6], gold[:6])
-        out[d['key']] = dict(mem=mem, n=n, ncode=ncode, cycles=cyc, instrs=ic,
+        out[d['key']] = dict(mem=mem, n=n, ncode=ncode, nro=nro,
+                             cycles=cyc, instrs=ic,
                              selfmod=t.self_modifying, **{x: d[x] for x in
                              ('label', 'nops', 'defs')})
     return out, gold

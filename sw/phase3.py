@@ -19,6 +19,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from sweep import ROOT, BUILD, aw, yosys_nand, ram_cost, write_rom, harvard_cost
+import suite as _suite
+_suite.POOLING = False        # phase 3: one word per variable
 from suite import DESIGNS, build, MASK
 
 SRC = {'sq': ['subleq_cpu.v', 'comp_subleq.v'], 'acc': ['cpu_acc.v']}

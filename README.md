@@ -63,23 +63,45 @@ Phase 3 replaces it with a five-benchmark suite the same machine must run
 written once in a virtual ISA and macro-expanded per target so every machine
 provably runs the same algorithm.
 
-| design | ops | words | core | all-RAM | ROM+RAM | best | cycles | gate-Mcy |
+| design | ops | words | core | all-RAM | ROM=code | ROM=code+RO | cycles | gate-Mcy |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| SUBLEQ | 1 | 852 | 1043 | 166655 | n/a | 166655 | 47509 | 7918 |
-| LDA STA JZ SUB JN | 5 | 309 | 958 | 61085 | n/a | 61085 | 14873 | 909 |
-| + ADD JMP | 7 | 259 | 1182 | 51603 | n/a | 51603 | 11013 | 568 |
-| **+ LDX LDAX STAX** | **10** | **247** | 1335 | 49501 | **10581** | **10581** | 10333 | **109** |
-| + AND OR XOR SHR | 14 | 247 | 1543 | 49709 | 10789 | 10789 | 10333 | 112 |
+| SUBLEQ | 1 | 841 | 1241 | 164783 | n/a | n/a | 47509 | 7829 |
+| LDA STA JZ SUB JN | 5 | 298 | 1134 | 59125 | n/a | n/a | 14873 | 879 |
+| + ADD JMP | 7 | 247 | 1311 | 49477 | n/a | n/a | 11013 | 545 |
+| **+ LDX LDAX STAX** | **10** | **235** | 1509 | 47295 | 9344 | **7078** | 10333 | 73.1 |
+| + LDI ADDI | 12 | 227 | 1691 | 45927 | 8019 | 7325 | 9814 | **71.9** |
+| + AND OR XOR SHR | 14 | 235 | 1711 | 47497 | 9546 | 7280 | 10333 | 75.2 |
 
-**Ten instructions wins** — 5.2x better than seven on area x time, 72x better
+**Ten instructions wins** — 4.8x better than seven on area x time, 67x better
 than SUBLEQ, with the curve turning up at 14.
 
-The index register is the reason, and not for the obvious reason. It costs 153
+The index register is the reason, and not for the obvious reason. It costs 148
 gates and saves only 12 words of program. What it actually does is remove the
 need for self-modifying code, which lets the whole program move from RAM
-(~196 gates/word) into ROM (~4 gates/word): 49501 gates down to 10581. **ROM
-eligibility is an ISA property**, and on any workload with array indexing exactly
-one instruction group buys it.
+(~196 gates/word) into ROM (~4 gates/word). **ROM eligibility is an ISA
+property**, and on any workload with array indexing exactly one instruction group
+buys it.
+
+## Phase 4: survey, and what's left
+
+A literature survey (Subleq-theta, Lipsi, SERV, Ultrasmall, Jones's Ultimate
+RISC) found no ISA shape that beats an accumulator machine on this cost model.
+Three further levers were tested, and the winner dropped from 11,420 to **7,078
+gates**:
+
+* **Read-only data out of writable RAM** — 12 constants were sitting in RAM at
+  ~196 gates each. A memory-map change, not an ISA change: **2,266 gates**.
+* **Variable pooling** — the benchmarks run in sequence, so 18 scalars pool to
+  seven: **2,076 gates**. A compiler decision worth more than every remaining
+  ISA decision combined.
+* **Immediates** — a *net 247-gate loss*, because once constants live in ROM
+  there is nothing left for an immediate field to save. They do save cycles.
+
+Also measured and rejected: narrower data words. Storing 368 bits costs 12.5
+gates/bit at 16-bit words and 14.4 at 1-bit words — cost is set by bits, not
+words, so going 8-bit like Lipsi cannot help when memory is built from gates.
+
+Over half the remaining 7,078 gates is the benchmark's own working set.
 
 ## Documents
 
@@ -97,6 +119,7 @@ make          # assemble both programs, simulate, verify output, count gates
 make fmax     # place & route both designs, report Fmax across 4 seeds
 make sweep    # phase 2: build and measure all seven design points
 make suite    # phase 3: run the five-program suite across the ISA ladder
+make phase4   # phase 4: three-way memory split, immediates, corrected counting
 ```
 
 `make` prints cycle counts, a verification pass against an independent Python
