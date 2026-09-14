@@ -262,3 +262,129 @@ verification pass, and both gate counts; `make fmax` reproduces the frequencies.
 
 `git init`, `.gitignore` for `build/` and simulator/P&R artefacts, single initial
 commit of the RTL, software, synthesis scripts, Makefile and documentation.
+
+---
+
+## Session 2 — 2026-09-14: design-space sweep
+
+### 12. Realising the benchmark was measuring the wrong thing
+
+Divided the phase 1 RAM numbers by word count before starting anything else:
+26600/136 and 30680/157 both give **~196 NAND-equivalents per 16-bit word**,
+consistent to 0.1%. Two consequences fell out immediately:
+
+* the 100-word output array is 19,560 gates — **71% of the whole computer**, and
+  completely insensitive to the instruction set;
+* one word of program is worth 24% of the entire V1 CPU core, so almost any
+  instruction that removes a word of code pays for itself.
+
+The first point means phase 1's benchmark could not answer the question being
+asked. Replaced the output array with a 16-bit memory-mapped output port
+(register + strobe, one address past the last RAM word), placed inside the
+synthesised core so every design point carries it equally.
+
+### 13. One CPU, instruction groups behind ifdefs
+
+Rather than write five CPUs and hope they were equally well designed, wrote one
+`rtl/cpu_acc.v` with `HAS_ADD`, `HAS_JMP`, `HAS_CTR`, `HAS_LOGIC` selecting
+instruction groups at compile time. Every design point then provably shares a
+microarchitecture and the ISA is the only variable. Yosys optimises away the
+decode for absent opcodes, so the smaller variants are not carrying dead logic.
+
+Added two endpoints beyond the ladder: `cpu_fib2`, a 2-register machine with no
+data memory, and `fib_fsm`, the benchmark burned into a state machine with no
+instruction set at all. Both exist to find where the optimisation actually
+terminates.
+
+Programs were re-optimised per ISA rather than transliterated. The V2/V3 loop
+exploits the fact that after `STA a` the accumulator already holds the new `a`,
+so `ADD b` computes the new `b` with no reload — 8 instructions for the loop
+body instead of 11.
+
+### 14. SUBLEQ needs a readable port
+
+`subleq Z, port` computes `M[port] - M[Z]`, so a write-only port breaks the
+machine. Defined reads of the port address as returning 0, which makes
+`subleq a, Z; subleq Z, port` emit `+a`. In hardware that is one flip-flop and a
+16-bit mux (~17 gates) because the RAM has a 1-cycle read latency and the mux
+must be driven by the *previous* cycle's address. The alternative — clearing the
+port in software with an extra `subleq port, port` per output — would have cost 6
+extra words, about 1,200 gates. Cheaper in gates to fix it in hardware.
+
+Also parameterised `subleq_cpu`'s address width, defaulting to 12 so the phase 1
+flow still reproduces bit-for-bit.
+
+### 15. Bugs
+
+* `wire iff` failed to compile under `-g2012`: **`iff` is a reserved
+  SystemVerilog keyword.** It had gone unnoticed in phase 1 because `top.v` was
+  only ever read by Yosys, never by Icarus. Renamed throughout.
+* `cpu_fib2` emitted only 3 of 100 values. Cause: the branch target was applied
+  to `pc` at the clock edge, but the RAM had already latched the *old* `pc` that
+  same cycle, so every taken branch executed one wrong instruction. Fixed by
+  driving the branch target combinationally onto the address bus in the branch
+  cycle — the same trick `cpu_acc` already used for JZ/JMP — which also makes
+  taken branches cost zero bubble.
+* Lost the RTL-simulation patch by editing the working copy instead of the repo
+  copy and then overwriting it. Noticed because the printed cycle counts were
+  emulator values, one lower than the RTL values. Reapplied cleanly, and added
+  asserts so the run now fails loudly if RTL and emulator disagree by more than
+  2 cycles or if any design emits a wrong value.
+
+All seven design points now RTL-simulated, all verified against F0..F99, zero
+mismatches.
+
+### 16. First sweep: the curve turns up at 12 instructions
+
+```
+design                  ops  words   core  RAM-code   TOTAL  cycles
+SUBLEQ                    1     50    807      9822   10629    4147
+LDA STA JZ SUB            4     29    704      5719    6423    2067
++ ADD JMP                 6     18    887      3577    4464    1185
++ LDC DJNZ                8     13   1078      2600    3678     843
++ AND OR XOR SHR         12     13   1293      2600    3893     843
+2-register machine        9      9   1071      1820    2891     252
+hardwired FSM             0      0    884         0     884     150
+```
+
+The minimum is at 8 instructions. The 12-instruction variant is the control: its
+four logic instructions are never executed by the program, so it adds 215 gates
+of ALU and decode and saves nothing. That gives the break-even rule directly —
+an instruction is worth adding only if it removes at least one word of program
+per ~196 gates it costs.
+
+### 17. The ROM lever, which turned out to be bigger than the ISA
+
+Noticed that with the output array gone, **none of the programs self-modify any
+more** — phase 1 only needed self-modifying code to walk the output pointer. So
+the code does not need writable storage.
+
+Wrote `rtl/memsys.v` (code ROM at `[0, NCODE)`, data RAM above it, registered
+select) and had the sweep generate a `case`-statement ROM per program and
+synthesise the whole memory subsystem as one block. Measured cost per word of
+code:
+
+```
+RAM: 196-202 gates/word     ROM: 2.6-8 gates/word
+```
+
+25-70x cheaper, and it cuts every total by 2.4-5.6x. This is a larger effect than
+the entire instruction set question, and it also *flattens* that question: with
+code in ROM, SUBLEQ drops from 2.9x the best design to 1.25x, and actually comes
+in cheaper than the original 4-instruction machine, because its core is smaller
+and code density no longer dominates.
+
+### 18. The degenerate result
+
+The hardwired FSM is 884 gates and 150 cycles: 4.2x smaller and 5.6x faster than
+the best programmable design. The 2-register machine at 1143 gates sits halfway
+along the same road, with opcodes (`ADDBA`, `ADDAB`, `OUTA`, `OUTB`) that are
+really a Fibonacci accelerator in disguise.
+
+This is the honest answer to "which CPU design minimises gates for this task":
+**none of them**, because a benchmark of one fixed program does not need a
+program. Recorded this in `project.md` along with a proposed phase 3 benchmark —
+a five-program suite (Fibonacci, insertion sort, multiply/divide, GCD, binary to
+decimal) scored on area x time — and two rules that need fixing up front, since
+each is worth more than the ISA choice: whether self-modifying code is allowed
+(the ROM/RAM swing), and area x time rather than area alone.

@@ -7,3 +7,4 @@ build/
 *.asc
 *.bin
 sim
+rom_*.v

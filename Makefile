@@ -10,7 +10,7 @@ ACC_WORDS  ?= 136          # program+data+array footprint, printed by sw/asm.py
 SUB_WORDS  ?= 157
 SEEDS      ?= 1 2 3 4
 
-.PHONY: all sim gates ram fmax clean
+.PHONY: all sim gates ram sweep fmax clean
 all: sim gates ram
 
 build:
@@ -53,6 +53,11 @@ fmax: | build
 	      | grep -oE "[0-9]+\.[0-9]+ MHz" | head -1 | tr '\n' ' '; \
 	  done; echo; \
 	done
+
+# ---- phase 2: design-space sweep (assembles, simulates and synthesises
+#      every design point, then prints the gate/cycle table)
+sweep:
+	python3 sw/sweep.py
 
 clean:
 	rm -rf build

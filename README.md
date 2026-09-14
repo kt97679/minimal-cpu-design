@@ -26,6 +26,35 @@ must buffer A, B, C and M[A] across every instruction. And once the program stor
 is counted, the CPU core is only ~3% of the gate budget, so code density
 dominates — which is exactly where 3 words per instruction hurts.
 
+## Phase 2: what actually minimises gates
+
+A word of gate-built RAM costs ~196 gates, so the 100-word output array was 71%
+of the phase 1 machine. Replacing it with an output port and sweeping the
+instruction set gives the real picture:
+
+| design | ops | words | core | + code in RAM | + code in ROM | cycles |
+|---|---:|---:|---:|---:|---:|---:|
+| SUBLEQ | 1 | 50 | 807 | 10629 | 1903 | 4147 |
+| LDA STA JZ SUB | 4 | 29 | 704 | 6423 | 1941 | 2067 |
+| + ADD JMP | 6 | 18 | 887 | 4464 | 1730 | 1185 |
+| **+ LDC DJNZ** | **8** | **13** | 1078 | **3678** | **1526** | 843 |
+| + AND OR XOR SHR | 12 | 13 | 1293 | 3893 | 1741 | 843 |
+| 2-register machine | 9 | 9 | 1071 | 2891 | 1143 | 252 |
+| hardwired FSM | 0 | 0 | 884 | 884 | 884 | 150 |
+
+Three findings:
+
+* **The curve turns up at 12 instructions.** An instruction pays for itself only
+  if it removes at least one word of program per ~196 gates it adds. The four
+  logic instructions in the 12-op variant are never executed, so they are pure
+  cost.
+* **Code in ROM beats every ISA decision.** A ROM word is 3-8 gates against ~196
+  for RAM. Moving code to ROM cuts totals by 2.4-5.6x and shrinks SUBLEQ's
+  penalty from 2.9x to 1.25x.
+* **The benchmark is degenerate.** The cheapest machine that computes 100
+  Fibonacci numbers has no instruction set at all. See `project.md` for the
+  proposed replacement benchmark.
+
 ## Documents
 
 * **[project.md](project.md)** — what is being compared and why, the fairness
@@ -40,6 +69,7 @@ dominates — which is exactly where 3 words per instruction hurts.
 apt-get install iverilog yosys nextpnr-ice40
 make          # assemble both programs, simulate, verify output, count gates
 make fmax     # place & route both designs, report Fmax across 4 seeds
+make sweep    # phase 2: build and measure all seven design points
 ```
 
 `make` prints cycle counts, a verification pass against an independent Python

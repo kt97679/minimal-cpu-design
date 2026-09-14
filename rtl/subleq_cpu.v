@@ -2,10 +2,10 @@
 //   M[B] <- M[B] - M[A];  if (M[B] <= 0 signed) pc <- C  else pc <- pc+3
 // Instruction = 3 consecutive 16-bit words (A, B, C), addresses are 12 bit.
 // Same single-port synchronous RAM interface / 1-cycle read latency as acc_cpu.
-module subleq_cpu (
+module subleq_cpu #(parameter AW = 12) (
     input  wire        clk,
     input  wire        rst,
-    output reg  [11:0] maddr,
+    output reg  [AW-1:0] maddr,
     output reg         mwe,
     output reg  [15:0] mdout,
     input  wire [15:0] mdin,
@@ -18,7 +18,7 @@ module subleq_cpu (
                S_VA = 3'd4,  // mdin = M[A], drive addr = regB
                S_VB = 3'd5;  // mdin = M[B], compute, write back to regB
 
-    reg [11:0] pc, regA, regB, regC;
+    reg [AW-1:0] pc, regA, regB, regC;
     reg [15:0] vA;
     reg  [2:0] state;
 
@@ -40,14 +40,14 @@ module subleq_cpu (
 
     always @(posedge clk) begin
         if (rst) begin
-            pc <= 12'd0; state <= S_F;
-            regA <= 12'd0; regB <= 12'd0; regC <= 12'd0; vA <= 16'd0;
+            pc <= {AW{1'b0}}; state <= S_F;
+            regA <= {AW{1'b0}}; regB <= {AW{1'b0}}; regC <= {AW{1'b0}}; vA <= 16'd0;
         end else begin
             case (state)
-                S_F:  begin pc <= pc + 12'd1; state <= S_A; end
-                S_A:  begin regA <= mdin[11:0]; pc <= pc + 12'd1; state <= S_B; end
-                S_B:  begin regB <= mdin[11:0]; pc <= pc + 12'd1; state <= S_C; end
-                S_C:  begin regC <= mdin[11:0]; state <= S_VA; end
+                S_F:  begin pc <= pc + 1'b1; state <= S_A; end
+                S_A:  begin regA <= mdin[AW-1:0]; pc <= pc + 1'b1; state <= S_B; end
+                S_B:  begin regB <= mdin[AW-1:0]; pc <= pc + 1'b1; state <= S_C; end
+                S_C:  begin regC <= mdin[AW-1:0]; state <= S_VA; end
                 S_VA: begin vA <= mdin; state <= S_VB; end
                 default: begin                        // S_VB
                     if (take) pc <= regC;

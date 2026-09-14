@@ -186,3 +186,128 @@ make fmax     # place & route both designs, report Fmax across 4 seeds
 `sw/asm.py` contains an independent Python emulator of each ISA; the testbench
 checks the RTL output against it and against a directly computed Fibonacci
 sequence, so a broken CPU cannot silently produce a plausible cycle count.
+
+---
+
+# Phase 2: minimising gates across the design space
+
+## Why the phase 1 benchmark had to change
+
+Phase 1 measured one number that reframes the whole question: **one 16-bit word
+of gate-built RAM costs ~196 NAND-equivalents**, so the 100-word output array was
+19,560 gates — **71% of the entire computer**. The CPU core was 3%.
+
+That makes the original benchmark a poor instrument for comparing instruction
+sets, because no ISA change can touch the dominant term. Phase 2 therefore
+replaces the output array with a **16-bit output port**: a register plus a
+strobe, memory-mapped one address past the last RAM word. The port is inside the
+synthesised core for every design point, so all of them carry it equally. The
+task is otherwise unchanged — emit F0..F99 mod 2^16.
+
+## Design points
+
+All share one microarchitecture (single-port synchronous RAM, 1-cycle read
+latency, overlapped fetch) so the instruction set is the only variable.
+`rtl/cpu_acc.v` selects instruction groups at compile time.
+
+| | instructions | notes |
+|---|---|---|
+| SUBLEQ | 1 | `subleq A,B,C`; reading the port address yields 0 |
+| V1 | 4 | LDA STA JZ SUB — the original set |
+| V2 | 6 | + ADD, JMP |
+| V3 | 8 | + LDC, DJNZ (8-bit counter register) |
+| V5 | 12 | + AND, OR, XOR, SHR — *unused by the program*, to find the turning point |
+| FIB2 | 9 | two data registers, no data memory, specialised towards the task |
+| FSM | 0 | no instruction set at all, benchmark burned into a state machine |
+
+## Results
+
+Gate counts are NAND-equivalent (2-input NANDs after `abc -g NAND`, each D
+flip-flop counted as 6). All seven designs were RTL-simulated and verified to
+emit F0..F99 correctly.
+
+| design | ops | words | core | RAM code | **total** | ROM code | **total** | cycles |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| SUBLEQ | 1 | 50 | 807 | 9822 | **10629** | 1096 | **1903** | 4147 |
+| LDA STA JZ SUB | 4 | 29 | 704 | 5719 | **6423** | 1237 | **1941** | 2067 |
+| + ADD JMP | 6 | 18 | 887 | 3577 | **4464** | 843 | **1730** | 1185 |
+| **+ LDC DJNZ** | **8** | **13** | 1078 | 2600 | **3678** | 448 | **1526** | 843 |
+| + AND OR XOR SHR | 12 | 13 | 1293 | 2600 | **3893** | 448 | **1741** | 843 |
+| 2-register machine | 9 | 9 | 1071 | 1820 | **2891** | 72 | **1143** | 252 |
+| hardwired FSM | 0 | 0 | 884 | 0 | **884** | 0 | **884** | 150 |
+
+### The curve does turn up, at 12 instructions
+
+Going 1 -> 4 -> 6 -> 8 instructions cuts total gates by 2.9x, because each added
+instruction removes program words, and a word costs ~196 gates while an added
+opcode costs ~100-200. Going 8 -> 12 adds 215 gates of ALU and decode and saves
+**zero** words, because the program never uses AND/OR/XOR/SHR. That is the
+turning point, and the rule behind it is sharp: an instruction pays for itself
+only if it removes at least one word of program per ~196 gates it adds.
+
+### Exchange rates, all measured rather than assumed
+
+* **1 word of RAM = ~196 gates.** One saved instruction is worth about a quarter
+  of the entire V1 CPU core.
+* **1 word of ROM = 3-8 gates**, 25-70x cheaper. Once the output array is gone
+  none of these programs self-modify, so their code does not need writable
+  storage. Moving it to ROM cuts totals by 2.4-5.6x, which is the single largest
+  lever in the whole study — larger than the entire instruction set question.
+* **A 16-bit register = ~130 gates**, cheaper than the ~196-gate RAM word it
+  replaces, and it needs no address bits in the instruction. This is why the
+  register machine wins on both axes at once.
+
+### ROM flattens the ISA question
+
+With code in RAM, SUBLEQ costs 2.9x the best design. With code in ROM it costs
+1.25x, and is actually *cheaper than V1* — its 807-gate core is smaller than V1's
+704-gate core plus V1's larger program. When memory is cheap, code density stops
+mattering and the comparison collapses back to core size, where the
+one-instruction machine was never far behind.
+
+## The task is degenerate, and that is the real finding
+
+The lowest-gate machine that computes 100 Fibonacci numbers is **884 gates and
+has no instruction set at all**. It is 4.2x smaller and 5.6x faster than the best
+programmable design, because a benchmark consisting of one fixed program does not
+need a program.
+
+This is not a quirk of Fibonacci. Any single fixed task has this property: the
+optimisation always terminates at a hardwired FSM, and the ISA ladder merely
+describes how far along that road you have travelled. The 2-register machine at
+1143 gates is the same phenomenon halfway down — its ADDBA/ADDAB/OUTA/OUTB
+opcodes are a Fibonacci accelerator wearing an instruction set.
+
+So "find the minimum-gate CPU for this task" has no interesting answer. The
+question only becomes meaningful under a constraint that makes programmability
+worth paying for.
+
+## Proposed benchmark for phase 3
+
+Replace one program with **a small suite that the same machine must run**, scored
+as `core + memory sized for all programs` against `total cycles for all
+programs`. A suite chosen so each member stresses something different:
+
+1. **Fibonacci to 100 terms** — keep it, for continuity with phases 1 and 2.
+2. **Insertion sort of 32 words** — needs indexed addressing and
+   compare-and-branch. The strongest ISA differentiator in the set: machines
+   without an index register must self-modify, which forces code back into RAM
+   and re-prices the ROM lever.
+3. **16x16 multiply and divide by shift-and-add** — needs shifts, carry and
+   conditional accumulate. SUBLEQ pays enormously here.
+4. **Euclid's GCD** — signed comparison and a data-dependent loop.
+5. **Binary to decimal conversion** — repeated division and digit output, which
+   is what a real machine of this size actually spends its time doing.
+
+Two rules are worth fixing up front, because each is worth more than the ISA
+choice itself:
+
+* **Is self-modifying code allowed?** This decides whether code lives in ROM
+  (3-8 gates/word) or RAM (~196 gates/word) — a 2.4-5.6x swing.
+* **Score on area x time, not area alone.** Otherwise the answer degenerates
+  toward hardwired logic again. A suite makes that much harder; the AT product
+  removes the incentive entirely.
+
+Under those rules the expected winner is an 8-12 instruction accumulator machine
+with an index register — essentially a PDP-8 — and the interesting question
+becomes *which* instructions rather than *how many*.
