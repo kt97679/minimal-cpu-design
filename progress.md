@@ -671,3 +671,84 @@ instruction set: read-only data in ROM (2,266 gates) and variable pooling (2,076
 The project's closing finding: once the memory hierarchy is right, *which* single
 instruction you pick matters far more than *how many* you have. SUBLEQ and MOVE
 are both OISCs and they differ by a factor of 23.
+
+---
+
+## Session 6 — 2026-09-14: the MOVE comparison was unfair
+
+### 35. The objection, and why it lands
+
+Raised against phase 5: the MOVE machine is an OISC only by technicality. It has
+a full ALU reached by moving a value to one address and collecting the result
+from another, so its destination address field selects between ten behaviours —
+which is what an opcode field does. Comparing it to SUBLEQ as one instruction
+against one instruction is not like for like.
+
+Correct, and phase 5's own measurements had already said so without my drawing
+the conclusion: the MOVE core came out *larger* than the 10-instruction machine,
+and I wrote that "removing the opcode relocates the decoding rather than
+eliminating it". That was the finding; I filed it as a footnote.
+
+Wrote out the port-to-instruction mapping and it is 1:1 across all ten
+operations. The MOVE machine *is* the a10 accumulator machine with the opcode
+moved into the destination address. Its near-tie with a10 is two encodings of one
+architecture landing in the same place, not a result about OISCs.
+
+Changed every table to count **distinct primitive operations** — opcodes plus
+port behaviours, excluding the output port that every design has — rather than
+instruction formats. MOVE is relabelled from 1 operation to 9.
+
+### 36. Giving SUBLEQ the same amenity
+
+If memory-mapped functional units are allowed for MOVE they must be allowed for
+SUBLEQ. Built `rtl/comp_subleq2.v`: the same SUBLEQ core, with two addresses
+wired to hardware — `ADR` (an index register; `subleq ADR,ADR` clears it,
+`subleq K,ADR` adds to it) and `IND` (reads and writes `mem[ADR]`). Still exactly
+one instruction.
+
+Indexed store drops from 15 instructions to 9, and — the point — nothing
+self-modifies any more, so the program can live in ROM.
+
+**Bug:** the first run produced correct Fibonacci output and then `x` for every
+sorted value. Cause: `adr` had no reset, and the program clears the index with
+`subleq ADR,ADR`, which computes `x - x = x` — so the register never became
+defined. The emulator started it at 0 and disagreed. Real hardware powers up the
+same way, so the fix is a genuine reset, not a simulation workaround.
+
+### 37. Result: the objection costs the phase 5 conclusion
+
+```
+SUBLEQ            164783 gates   AT 7829
+SUBLEQ + 2 ports    8848 gates   AT  398     18.6x smaller, 19.7x better
+a10                 7078 gates   AT   73
+```
+
+Two memory-mapped ports take SUBLEQ from 67x worse than the best design to 1.25x
+worse on gates. The "23x gap between two one-instruction machines" from phase 5
+was almost entirely an **addressing** gap.
+
+What survives: SUBLEQ is still 4.35x slower in cycles (44,953 vs 10,333) and 5.4x
+worse on area x time, because three words per instruction, no native comparison
+and no native add are properties of the instruction itself that no port can fix.
+
+### 38. The finding that replaces the old one
+
+Sorted by gate count the field splits into two clusters, and the boundary is not
+the instruction count:
+
+```
+cannot index without self-modifying code   47,295 - 164,783 gates   (1-7 ops)
+can index without self-modifying code        7,078 -   8,848 gates   (3-14 ops)
+```
+
+Within the cheap cluster everything is inside 25% of everything else, spanning 3
+to 14 operations. The expensive cluster is at least 5.3x worse, spanning 1 to 7.
+
+The dominant variable in the whole project is one binary property: **can the
+machine compute an address without writing into its own program?** Yes means the
+program is read-only at ~4 gates/word; no means writable at ~196. Instruction
+count, encoding, and whether the opcode lives in its own field or in an address
+are all sub-25% effects on top of that.
+
+SUBLEQ's famous inefficiency was never really about having one instruction. It
+was about having no way to touch an array.

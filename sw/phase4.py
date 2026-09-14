@@ -60,12 +60,13 @@ def main():
 
         romcode = romro = None
         if not r['selfmod']:
-            write_rom(f'p4c_{k}', r['mem'][:ncode], aw(n))
-            romcode = core + harvard_cost(f'p4c_{k}', ncode, n - ncode, aw(n))
+            A = aw(n + 2)
+            write_rom(f'p4c_{k}', r['mem'][:ncode], A)
+            romcode = core + harvard_cost(f'p4c_{k}', ncode, n - ncode, A)
             ndata = n - nro
             daw = max(1, math.ceil(math.log2(ndata)))
-            write_rom(f'p4r_{k}', r['mem'][:nro], aw(n))
-            romro = core + harvard2_cost(f'p4r_{k}', nro, ndata, aw(n), daw)
+            write_rom(f'p4r_{k}', r['mem'][:nro], A)
+            romro = core + harvard2_cost(f'p4r_{k}', nro, ndata, A, daw)
 
         best = min(x for x in (allram, romcode, romro) if x is not None)
         rows.append(dict(key=k, label=r['label'], nops=r['nops'], words=n,

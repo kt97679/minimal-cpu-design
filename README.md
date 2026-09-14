@@ -103,35 +103,58 @@ words, so going 8-bit like Lipsi cannot help when memory is built from gates.
 
 Over half the remaining 7,078 gates is the benchmark's own working set.
 
-## Phase 5: the MOVE machine
+## Phases 5-6: the MOVE machine, and a correction
 
-Jones's Ultimate RISC — one instruction, `MOVE src,dst`, with a memory-mapped
-accumulator, ALU, PC and index register — built and measured on the same suite.
+Built Jones's Ultimate RISC — one instruction, `MOVE src,dst`, with a
+memory-mapped accumulator, ALU, PC and index register. It came within 3.5% of the
+10-instruction machine, which looked like a striking result for an OISC.
 
-| design | ops | words | core | best | cycles | gate-Mcy |
-|---|---:|---:|---:|---:|---:|---:|
-| **10-instruction accumulator** | 10 | 235 | 1509 | **7078** | 10333 | 73.1 |
-| 12-instruction, immediates | 12 | 227 | 1691 | 7325 | 9814 | **71.9** |
-| MOVE (Ultimate RISC) | 1 | 225 | 1606 | 7329 | 10743 | 78.7 |
-| SUBLEQ | 1 | 841 | 1241 | 164783 | 47509 | 7829 |
+It isn't. The MOVE machine's destination address field selects between ten
+behaviours, which is what an opcode field does; its ports map 1:1 onto the
+accumulator machine's ten instructions. It is the same architecture with the
+opcode relocated into an address — which is why its core measured *larger*, not
+smaller. **Instruction count was the wrong axis**; the tables now count distinct
+primitive operations.
 
-**It loses by 3.5%.** After SUBLEQ came in 67x worse, a one-instruction machine
-finishing within 4% of the best design is the most interesting result here — and
-both halves of the phase 4 prediction ("small area win, ~1.6x cycle loss") were
-wrong. The accumulator absorbs one end of nearly every move, so MOVE averages
-2.09 cycles/instruction against 1.86, and it needs *fewer* instructions and less
-code. Its core is *larger*, because removing the opcode relocates the decoding
-into two 8-bit port comparators rather than eliminating it.
+The fair test is to give SUBLEQ the same amenity: two addresses wired to hardware
+(`ADR`, an index register; `IND`, which reads and writes `mem[ADR]`). Still one
+instruction.
 
-What it really pays for is branch targets: a MOVE machine cannot encode one in
-its instruction, so every branch site needs a constant word — 34 constants
-against 12. In RAM that is ~4,300 gates and it loses badly; in ROM it is ~90 and
-the race is close. **The Ultimate RISC is only competitive because read-only
-storage is cheap.**
+| design | ops | gates | cycles | gate-Mcy |
+|---|---:|---:|---:|---:|
+| SUBLEQ | 1 | 164783 | 47509 | 7829 |
+| **SUBLEQ + ADR/IND** | 3 | **8848** | 44953 | 398 |
+| LDA STA JZ SUB JN | 5 | 59125 | 14873 | 879 |
+| + ADD JMP | 7 | 49477 | 11013 | 545 |
+| **+ LDX LDAX STAX** | 10 | **7078** | 10333 | 73.1 |
+| + LDI ADDI | 12 | 7325 | 9814 | **71.9** |
+| MOVE, 9 ports | 9 | 7329 | 10743 | 78.7 |
+| + AND OR XOR SHR | 14 | 7280 | 10333 | 75.2 |
 
-Closing finding: once the memory hierarchy is right, *which* single instruction
-you pick matters far more than *how many* you have — SUBLEQ and MOVE are both
-OISCs and they differ by 23x.
+**Two ports take SUBLEQ from 164,783 gates to 8,848** — 18.6x smaller, from 67x
+worse than the best design to 1.25x worse. SUBLEQ remains 4.35x slower in cycles,
+which is genuine: three words per instruction, no native compare and no native
+add are properties of the instruction that no port can fix.
+
+## The actual finding
+
+Sorted by gate count the field splits in two, and the boundary is not the
+instruction count:
+
+| | gates | operations |
+|---|---|---|
+| cannot index without self-modifying code | 47,295 – 164,783 | 1–7 |
+| can index without self-modifying code | 7,078 – 8,848 | 3–14 |
+
+Everything in the cheap cluster is within 25% of everything else in it. The
+dominant variable in this whole study is one binary property: **can the machine
+compute an address without writing into its own program?** If yes the program is
+read-only and lives in ROM at ~4 gates/word; if no it lives in RAM at ~196.
+Instruction count, encoding, and where the opcode lives are sub-25% effects on
+top of that.
+
+SUBLEQ's famous inefficiency was never really about having one instruction. It
+was about having no way to touch an array.
 
 ## Documents
 

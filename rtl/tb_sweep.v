@@ -29,6 +29,12 @@ module tb;
     comp_move #(.AW(`AWIDTH)) dut (
         .clk(clk), .rst(rst), .out_val(out_val), .out_stb(out_stb),
         .maddr(maddr), .mwe(mwe), .mdout(wd), .mdin(rd));
+ `elsif DUT_SUBLEQP
+    wire mwe;
+    wire [15:0] wd;
+    comp_subleq2 #(.N(`NWORDS), .AW(`AWIDTH)) dut (
+        .clk(clk), .rst(rst), .out_val(out_val), .out_stb(out_stb),
+        .ram_addr(maddr), .ram_we(mwe), .ram_din(wd), .ram_dout(rd));
  `elsif DUT_SUBLEQ
     wire mwe;
     wire [15:0] wd;

@@ -747,3 +747,123 @@ That is the honest end of this investigation. Once the memory hierarchy is right
 the instruction set stops being the interesting variable — and the choice of
 *which* one instruction matters enormously more than the choice of *how many*.
 SUBLEQ and MOVE are both OISCs, and they differ by a factor of 23.
+
+---
+
+# Phase 6: the MOVE comparison was unfair, and fixing it changes the story
+
+## The objection
+
+The MOVE machine is an OISC only by a technicality. It has a full ALU; you reach
+it by moving a value to one address and collecting the result from another. Its
+destination address field selects between ten different behaviours, which is
+exactly what an opcode field does. Comparing it to SUBLEQ as "one instruction
+versus one instruction" is not a like-for-like comparison.
+
+This is correct, and phase 5's headline — "a one-instruction machine finishes
+within 4% of the best design" — was misleading. The measurements themselves
+already said so: the MOVE core came out **larger** than the 10-instruction
+accumulator machine, and the reason given was that removing the opcode relocates
+the decoding rather than eliminating it. That should have been the conclusion
+rather than a footnote.
+
+Mapping the two machines against each other makes the point unarguable:
+
+| MOVE port | accumulator instruction |
+|---|---|
+| `MOVE m,ACC` / `MOVE ACC,m` | `LDA m` / `STA m` |
+| `MOVE m,ADD` / `MOVE m,SUB` | `ADD m` / `SUB m` |
+| `MOVE k,PC` / `PCZ` / `PCN` | `JMP` / `JZ` / `JN` |
+| `MOVE m,ADR` / `MOVE m,ADRA` | `LDX m` (index register) |
+| `MOVE IND,m` / `MOVE m,IND` | `LDAX` / `STAX` |
+
+It is the same ten operations. The MOVE machine is the 10-instruction
+accumulator machine with the opcode moved out of a dedicated field and into the
+destination address. Its near-tie with that machine is not a surprising result
+about OISCs; it is two encodings of one architecture landing in the same place.
+
+**The instruction count was the wrong axis.** What matters is the number of
+distinct primitive operations the hardware implements, wherever the selection
+bits happen to live. All tables below count operations, not instruction formats.
+
+## The fair experiment
+
+If a memory-mapped functional unit is allowed for MOVE, it must be allowed for
+SUBLEQ. So: SUBLEQ with the same amenity, and nothing else changed. Two
+addresses are wired to hardware instead of storage:
+
+* `ADR` — an index register. `subleq ADR,ADR` clears it, `subleq K,ADR` adds to
+  it.
+* `IND` — reads `mem[ADR]`, writes `mem[ADR]`.
+
+That is still literally one instruction, and it makes indexed access possible
+without the program modifying its own code: an indexed load drops from 9
+instructions to 9 but an indexed *store* drops from 15 to 9, and neither
+self-modifies any more.
+
+## Result
+
+| design | ops | words | core | all-RAM | ROM=code | ROM=code+RO | cycles | gate-Mcy |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| SUBLEQ | 1 | 841 | 1241 | 164783 | n/a | n/a | 47509 | 7829 |
+| **SUBLEQ + ADR/IND** | **3** | 805 | 1441 | 157979 | 11544 | **8848** | 44953 | 398 |
+| LDA STA JZ SUB JN | 5 | 298 | 1134 | 59125 | n/a | n/a | 14873 | 879 |
+| + ADD JMP | 7 | 247 | 1311 | 49477 | n/a | n/a | 11013 | 545 |
+| **+ LDX LDAX STAX** | **10** | 235 | 1509 | 47295 | 9344 | **7078** | 10333 | 73.1 |
+| + LDI ADDI | 12 | 227 | 1691 | 45927 | 8019 | 7325 | 9814 | **71.9** |
+| MOVE, 9 ports | 9 | 225 | 1606 | 45452 | 13784 | 7329 | 10743 | 78.7 |
+| + AND OR XOR SHR | 14 | 235 | 1711 | 47497 | 9546 | 7280 | 10333 | 75.2 |
+
+**Two memory-mapped ports take SUBLEQ from 164,783 gates to 8,848 — 18.6x
+smaller, and 19.7x better on area x time.** It goes from 67x worse than the best
+design to 1.25x worse on gates.
+
+So the "23x gap between two one-instruction machines" reported in phase 5 was
+almost entirely an *addressing* gap, not an instruction-set gap. The objection
+was right, and correcting it costs the earlier conclusion.
+
+## What survives the correction
+
+SUBLEQ is still **4.35x slower in cycles** (44,953 against 10,333), which is
+5.4x worse on area x time. That part is genuine and not about addressing at all:
+
+* three words per instruction, so every operation costs five memory accesses;
+* no native comparison, so `jn` is five instructions and `jz` is five;
+* no native add, so `a += b` is three.
+
+Those are properties of the instruction itself. Wiring up ports cannot fix them,
+and this is the residue of the phases 1-3 result that remains true.
+
+## The finding that replaces the old one
+
+Sorting the whole field by gate count produces two clusters, and the boundary is
+not where the instruction count changes:
+
+| | gates |
+|---|---|
+| **cannot index without self-modifying code** | 47,295 – 164,783 |
+| **can index without self-modifying code** | 7,078 – 8,848 |
+
+Every design in the cheap cluster is within **25%** of every other, and they
+range from 3 operations to 14. Every design in the expensive cluster is at least
+**5.3x** more expensive than the whole cheap cluster, and they range from 1
+operation to 7.
+
+The dominant variable in this entire study is a single binary property: **can the
+machine compute an address without writing into its own program?** If yes, the
+program is read-only, lives in ROM at ~4 gates/word, and the machine costs
+7-9k gates. If no, the program is writable, lives in RAM at ~196 gates/word, and
+the machine costs 47-165k. Everything else — the instruction count, the
+encoding, whether the opcode lives in its own field or in an address — is a
+sub-25% effect on top of that.
+
+SUBLEQ's famous inefficiency was never really about having one instruction. It
+was about having no way to touch an array.
+
+## A closing note on what "one instruction" means
+
+Both surviving OISCs here reach their performance by making address decoding do
+the work that an opcode would otherwise do. In the MOVE machine that is the whole
+architecture; in ported SUBLEQ it is two addresses. Once a machine is competitive,
+the instruction count has stopped describing anything real about it — which is
+probably the most useful thing this project has to say about OISCs.

@@ -278,6 +278,8 @@ class Target:
             addr += ARRN
             n = addr
             sym['port'] = n
+            for pname, poff in getattr(self, 'port_offsets', {}).items():
+                sym[pname] = n + poff
             sym.update(self.labels)
             sym.update(self.extra)
             self.sym = sym
@@ -679,10 +681,81 @@ def emu_move(mem, n, nout, limit=10 ** 7):
     return out, cyc, ic
 
 
+class SubleqP(Subleq):
+    """SUBLEQ plus a memory-mapped index register and indirect port.
+
+    Still one instruction. The difference is purely that two addresses are
+    wired to hardware, which is exactly the privilege the MOVE machine enjoys
+    -- and it is what removes the need for self-modifying code.
+    """
+    self_modifying = False
+    port_offsets = {'ADR': 1, 'IND': 2}
+
+    def gen(self, op):
+        k = op[0]
+        if k == 'ldx':
+            _, d, base, idx = op
+            self.var(d); self.var(idx)
+            self.clr('_Z'); self.sq(idx, '_Z')                 # _Z = -idx
+            self.clr('ADR')
+            self.sq(self.negbase(base), 'ADR')                 # ADR = base
+            self.sq('_Z', 'ADR')                               # ADR = base+idx
+            self.clr(d); self.clr('_Z')
+            self.sq('IND', '_Z')                               # _Z = -M[ADR]
+            self.sq('_Z', d)
+        elif k == 'stx':
+            _, base, idx, s = op
+            self.var(idx); self.var(s)
+            self.clr('_Z'); self.sq(idx, '_Z')
+            self.clr('ADR')
+            self.sq(self.negbase(base), 'ADR')
+            self.sq('_Z', 'ADR')
+            self.sq('IND', 'IND')                              # M[ADR] = 0
+            self.clr('_Z'); self.sq(s, '_Z')                   # _Z = -s
+            self.sq('_Z', 'IND')                               # M[ADR] = s
+        else:
+            super().gen(op)
+
+
+def emu_subleq2(mem, n, nout, limit=10 ** 8):
+    """SUBLEQ emulator with the OUT / ADR / IND ports at n, n+1, n+2."""
+    mem = mem[:] + [0] * 8
+    pc = cyc = ic = adr = 0
+    out = []
+
+    def rd(a):
+        if a == n:
+            return 0
+        if a == n + 1:
+            return adr
+        return mem[adr] if a == n + 2 else mem[a]
+
+    while ic < limit and len(out) < nout:
+        A, B, C = mem[pc], mem[pc + 1], mem[pc + 2]
+        r = (rd(B) - rd(A)) & MASK
+        if B == n:
+            out.append(r)
+        elif B == n + 1:
+            adr = r
+        elif B == n + 2:
+            mem[adr] = r
+        else:
+            mem[B] = r
+        pc = C if s16(r) <= 0 else pc + 3
+        cyc += 6
+        ic += 1
+    return out, cyc, ic
+
+
 # ------------------------------------------------------------------ designs
 DESIGNS = [
     dict(key='sq',    label='SUBLEQ',                    nops=1,
          make=lambda: Subleq(), defs=[]),
+    # `nops` counts distinct primitive operations -- opcodes plus port
+    # behaviours -- not instruction formats. The output port is excluded
+    # because every design has one.
+    dict(key='sqp',   label='SUBLEQ + ADR/IND ports',    nops=3,
+         make=lambda: SubleqP(), defs=[], emu='sqp'),
     dict(key='a5',    label='LDA STA JZ SUB JN',         nops=5,
          make=lambda: Acc(), defs=['HAS_SIGN']),
     dict(key='a7',    label='+ ADD JMP',                 nops=7,
@@ -695,7 +768,7 @@ DESIGNS = [
          make=lambda: Acc(has_add=True, has_jmp=True, has_index=True,
                           has_imm=True),
          defs=['HAS_SIGN', 'HAS_ADD', 'HAS_JMP', 'HAS_INDEX', 'HAS_IMM']),
-    dict(key='move',  label='MOVE (Ultimate RISC)',      nops=1,
+    dict(key='move',  label='MOVE, 9 ports',             nops=9,
          make=lambda: Move(), defs=[], emu='move'),
     dict(key='a14',   label='+ AND OR XOR SHR',          nops=14,
          make=lambda: Acc(has_add=True, has_jmp=True, has_index=True),
@@ -711,7 +784,8 @@ def build():
     for d in DESIGNS:
         t = d['make']()
         mem, n, ncode, nro = t.assemble(prog)
-        emu = {'sq': emu_subleq, 'move': emu_move}.get(d['key'], emu_acc)
+        emu = {'sq': emu_subleq, 'sqp': emu_subleq2,
+               'move': emu_move}.get(d['key'], emu_acc)
         vals, cyc, ic = emu(mem, n, len(gold))
         assert vals == gold, (d['key'], len(vals), vals[:6], gold[:6])
         out[d['key']] = dict(mem=mem, n=n, ncode=ncode, nro=nro,
@@ -731,5 +805,7 @@ if __name__ == '__main__':
         print('%-24s %4d %7d %7d %9d %9d %5s' %
               (r['label'], r['nops'], r['ncode'], r['n'], r['instrs'],
                r['cycles'], 'yes' if r['selfmod'] else 'no'))
+
+
 
 

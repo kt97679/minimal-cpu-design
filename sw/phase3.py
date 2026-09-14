@@ -24,7 +24,7 @@ _suite.POOLING = False        # phase 3: one word per variable
 from suite import DESIGNS, build, MASK
 
 SRC = {'sq': ['subleq_cpu.v', 'comp_subleq.v'], 'acc': ['cpu_acc.v'],
-       'move': ['cpu_move.v']}
+       'move': ['cpu_move.v'], 'sqp': ['subleq_cpu.v', 'comp_subleq2.v']}
 
 
 def hexfile(mem, path):
@@ -35,10 +35,11 @@ def hexfile(mem, path):
 
 def run_rtl(key, n, defs, nout):
     exe = f'/tmp/p3_{key}'
-    fam = {'sq': 'sq', 'move': 'move'}.get(key, 'acc')
-    flag = {'sq': '-DDUT_SUBLEQ', 'move': '-DDUT_MOVE', 'acc': '-DDUT_ACC'}[fam]
+    fam = {'sq': 'sq', 'move': 'move', 'sqp': 'sqp'}.get(key, 'acc')
+    flag = {'sq': '-DDUT_SUBLEQ', 'move': '-DDUT_MOVE', 'acc': '-DDUT_ACC',
+            'sqp': '-DDUT_SUBLEQP'}[fam]
     cmd = (['iverilog', '-g2012', '-o', exe, flag,
-            f'-DNWORDS={n}', f'-DAWIDTH={aw(n)}', f'-DNOUT={nout}',
+            f'-DNWORDS={n}', f'-DAWIDTH={aw(n + 2)}', f'-DNOUT={nout}',
             f'-DHEXFILE="{BUILD}/p3_{key}.hex"'] +
            ['-D' + d for d in defs] +
            [f'{ROOT}/rtl/tb_sweep.v', f'{ROOT}/rtl/ramg.v'] +
@@ -57,6 +58,10 @@ def core_cost(d, n):
         rd = (f'read_verilog {ROOT}/rtl/subleq_cpu.v {ROOT}/rtl/comp_subleq.v\n'
               f' chparam -set N {n} -set AW {aw(n)} comp_subleq\n')
         top = 'comp_subleq'
+    elif key == 'sqp':
+        rd = (f'read_verilog {ROOT}/rtl/subleq_cpu.v {ROOT}/rtl/comp_subleq2.v\n'
+              f' chparam -set N {n} -set AW {aw(n + 2)} comp_subleq2\n')
+        top = 'comp_subleq2'
     elif key == 'move':
         rd = (f'read_verilog {ROOT}/rtl/cpu_move.v\n'
               f' chparam -set AW {aw(n)} comp_move\n')
