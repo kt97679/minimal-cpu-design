@@ -158,6 +158,10 @@ was about having no way to touch an array.
 
 ## Documents
 
+* **[DESIGN.md](DESIGN.md)** — reference description of the winning design: the
+  ten instructions and their encoding, the microarchitecture, the memory map,
+  the full gate budget, and why the index register is worth roughly 200x what it
+  costs.
 * **[project.md](project.md)** — what is being compared and why, the fairness
   rules, full results with explanation, and an honest account of which way each
   remaining bias cuts.

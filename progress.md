@@ -752,3 +752,17 @@ are all sub-25% effects on top of that.
 
 SUBLEQ's famous inefficiency was never really about having one instruction. It
 was about having no way to touch an array.
+
+### 39. Design document
+
+Added `DESIGN.md`: a standalone reference for the winning machine rather than a
+narrative of how it was found. Instruction table with encodings and cycle counts,
+the three-state microarchitecture and its overlapped fetch, the memory map, the
+gate budget by component, core cost per instruction group, and the index-register
+argument with the two qualifications that keep it honest (it saves nothing by
+itself — it is a permission to use ROM, and the saving only appears when the
+permission is used).
+
+All figures cross-checked against `build/phase4.json` and fresh synthesis runs
+before writing: core 1,335 plus 174 for the output port, 38 flip-flops, ROM 912
+gates for 212 words, data RAM 4,597 for 23 words, total 7,078.
