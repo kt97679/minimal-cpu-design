@@ -1,0 +1,9 @@
+# generated artefacts
+build/
+*.hex
+*.json
+*.vh
+*.vcd
+*.asc
+*.bin
+sim

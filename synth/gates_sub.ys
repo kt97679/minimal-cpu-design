@@ -1,0 +1,9 @@
+# Map subleq_cpu to 2-input NAND gates + plain D flip-flops and count them.
+read_verilog rtl/subleq_cpu.v
+hierarchy -top subleq_cpu
+proc; opt; fsm; opt; memory; opt
+techmap; opt -full
+dfflegalize -cell $_DFF_P_ 0
+abc -g NAND
+opt_clean
+stat

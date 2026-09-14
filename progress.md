@@ -1,0 +1,264 @@
+# Progress log
+
+Chronological record of how this project was built, including tool installation,
+dead ends, and bugs. Newest work at the bottom.
+
+---
+
+## Session 1 — 2026-09-13/14
+
+### 1. Framing the question
+
+Starting point: which is cheaper in gates and faster in wall-clock time, a SUBLEQ
+OISC or a 4-instruction accumulator machine, for a Fibonacci program.
+
+Decided early that this had to be *measured*, not reasoned about, because the two
+plausible intuitions point in opposite directions: SUBLEQ has one opcode and no
+architectural registers (suggests small), but a 3-operand instruction with 5
+memory accesses (suggests slow and bulky). Both intuitions turned out to be
+partly right.
+
+Key methodological decision: hold everything constant except the instruction set
+— same word width, same single-port memory, same 1-cycle read latency, same
+amount of microarchitectural effort, same algorithm. Documented as "Fairness
+rules" in `project.md`.
+
+### 2. Choosing and installing tools
+
+Surveyed the container first:
+
+```
+$ which iverilog verilator yosys ghdl nextpnr-ice40
+(nothing)
+```
+
+Nothing preinstalled. Picked an open-source flow:
+
+* **Icarus Verilog** — RTL simulation, for cycle counts. (Verilator would be
+  faster but the benchmark is ~5000 cycles; compile time dominates, so iverilog
+  is the better choice here.)
+* **Yosys** — synthesis. This is the tool that actually answers the gate-count
+  question: `abc -g NAND` maps a design to 2-input NAND cells and `stat` counts
+  them.
+* **nextpnr-ice40** — place-and-route, so "performance" includes critical path
+  rather than just cycle count.
+
+Installation:
+
+```
+$ sudo apt-get install ...        -> /bin/sh: sudo: not found
+$ id                              -> uid=0(root)     # already root
+$ apt-get update -qq && apt-get install -y -qq iverilog yosys
+```
+
+`apt-get update` emitted a 403 for an unrelated third-party nodesource repo;
+harmless, the Ubuntu repos are reachable and both packages installed. Versions:
+Yosys 0.33, Icarus Verilog present at /usr/bin/iverilog.
+
+`nextpnr-ice40` (0.6) was installed later, once the designs simulated correctly
+and it was worth getting real timing numbers.
+
+Considered and rejected: Logisim Evolution / Digital (schematic-level, nice for
+teaching but no automatic gate-count extraction and no timing), OpenLane/OpenROAD
+(would give a real standard-cell area in um^2, but pulling a PDK is heavy for a
+comparison that only needs relative numbers).
+
+### 3. Software first: `sw/asm.py`
+
+Wrote the assembler and reference emulator for both ISAs *before* any Verilog, so
+that the RTL would have something to be checked against. This paid off later.
+
+Design decisions made while writing it:
+
+* **F(100) doesn't fit in 16 bits** (~3.5e20 needs 70 bits). Options were bignum
+  arithmetic, a wider word, or modulo 2^16. Chose modulo — both machines do
+  identical arithmetic so the comparison is unaffected, and bignum code would
+  have buried the ISA difference under library code.
+* **Unrolled the loop by 2.** The naive `t=a+b; a=b; b=t` needs two register
+  copies per iteration, and a SUBLEQ copy is 3-4 instructions. Alternating
+  `a += b; b += a` needs zero copies on either machine. Without this the result
+  would have overstated SUBLEQ's cost.
+* **Self-modifying store pointers.** Neither machine has indexed addressing, so
+  both increment the address field of a store instruction in place. SUBLEQ gets
+  this cheaply (`subleq m2, p1+1` with `m2 = -2` adds 2 in one instruction); the
+  accumulator machine needs LOAD/SUB/STORE, 3 instructions.
+* Accumulator encoding chosen as `{2'bx, op[1:0], addr[11:0]}` — 2 opcode bits is
+  all four instructions need, and keeping the opcode narrow keeps the decoder to
+  almost nothing.
+
+First run:
+
+```
+ACC    : code=29 words  data=7  array=100  total=136  instr=1398  cycles=2697  ok=True
+SUBLEQ : code=51 words  data=6  array=100  total=157  instr=799  cycles=4794  ok=True
+first 10 fib: [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
+```
+
+Both correct against a directly computed Fibonacci sequence on the first try.
+Already informative: SUBLEQ runs 43% fewer instructions but 78% more cycles.
+
+### 4. RTL: `rtl/acc_cpu.v`, `rtl/subleq_cpu.v`
+
+Both written against the same memory contract: the CPU drives the address
+combinationally, the RAM registers it on the clock edge, data is available the
+*following* cycle. Both FSMs overlap the next instruction fetch with the last
+cycle of the current instruction, so neither wastes a cycle the other doesn't.
+
+Resulting schedules:
+
+* accumulator — `S_D` (decode, drive operand address) then `S_E` (consume operand,
+  update ACC, drive next fetch). LOAD/SUB/STORE = 2 cycles, JZ = 1 cycle.
+* SUBLEQ — `S_F -> S_A -> S_B -> S_C -> S_VA -> S_VB`, 6 cycles: three words of
+  instruction, read M[A], read M[B], subtract and write back.
+
+One PC trick worth recording: SUBLEQ increments the PC during each of the three
+operand fetches, so after `S_B` the PC already equals `instr+3`, the fall-through
+target. That means the design needs only a `+1` incrementer, the same as the
+accumulator machine, rather than a `+1/+2/+3` adder. Without this SUBLEQ would
+have looked artificially worse.
+
+**Bug found and fixed:** the accumulator CPU's reset dropped straight into the
+decode state, where `mdin` is undefined — it would have decoded garbage as its
+first instruction. Fixed by resetting into state `2'd3`, which shares the
+"drive address = PC, this is a fetch" path with `S_W`, so the fix cost zero
+extra logic.
+
+### 5. Testbench and simulation
+
+`rtl/tb.v` instantiates *both* computers side by side with their own RAMs and
+runs them concurrently, so the cycle counts come from a single simulation and
+can't drift apart through setup differences. Halt is detected by watching for an
+instruction fetch from a known address — deliberately not an instruction, so
+neither machine pays gates for it. The array contents are then compared against
+`expected.txt` written by the Python model.
+
+```
+$ iverilog -g2012 -o sim tb.v acc_cpu.v subleq_cpu.v && ./sim
+ACC    : 2698 cycles, 1398 instructions
+SUBLEQ : 4795 cycles, 799 instructions
+verification: 0 errors
+```
+
+RTL matches the emulator exactly (the +1 cycle on each is the final halt fetch).
+Both machines produce F0..F99 correctly. No RTL bugs beyond the reset issue.
+
+### 6. Gate counting — three iterations to get it right
+
+**Attempt 1.** `synth -top X -flatten; abc -g <gates>; stat`. Output looked
+plausible but the flip-flops came back as `$_SDFFE_PP0N_` — D flip-flops with
+both a clock enable and a synchronous reset baked in, counted as *one cell each*.
+That silently hides the enable multiplexer and reset gate inside a "1", and the
+two designs have different numbers of enables, so the comparison was unfair.
+
+**Attempt 2.** Added `dfflegalize -cell $_DFF_P_ 0` to force every flip-flop down
+to a plain D type and push the enable/reset logic out into visible gates. The
+`$_SDFFE_*` cells were still there afterwards. Cause: the `opt -full` that ran
+*after* `dfflegalize` includes `opt_dff`, which cheerfully re-absorbs the enable
+and reset logic back into the flip-flops, undoing the normalisation.
+
+**Attempt 3.** Moved `dfflegalize` to immediately before `abc`, with only
+`opt_clean` after it (which removes dead cells but does not re-merge flip-flops).
+This worked:
+
+```
+acc:     31 DFF,  428 NAND + 192 NOT
+subleq:  67 DFF,  537 NAND + 222 NOT
+```
+
+Counting a NOT as one NAND and a DFF as 6 NANDs: **806 vs 1161 NAND-equivalents,
+SUBLEQ 1.44x larger.** Cross-checked against a richer gate library
+(AND/OR/XOR/MUX/ANDNOT/ORNOT): 344 vs 439 cells, same 1.28-1.44x direction.
+
+The flip-flop count (31 vs 67) was the moment the result became clear: the area
+difference is *sequential state*, not datapath. SUBLEQ has to buffer A, B, C and
+M[A] across one instruction.
+
+Confirmed from the other direction by mapping to iCE40 logic cells: **109 vs 108
+LUT4s** — the combinational logic is essentially identical, because both designs
+contain exactly one 16-bit subtractor. Only the flip-flop count differs (33 vs 70).
+
+### 7. Program store as gates
+
+Realised the CPU core is the wrong thing to be comparing in isolation: the
+question was about building a whole computer from gates, and the program store is
+part of that. Wrote `rtl/ramg.v`, a plain register-file RAM, and ran it through
+`memory_map` + the same NAND mapping, sized to each program's actual footprint
+(136 and 157 words x 16 bits):
+
+```
+136x16:  2192 DFF, 11776 NAND + 1672 NOT  -> 26600 NAND-equivalent
+157x16:  2528 DFF, 13592 NAND + 1920 NOT  -> 30680 NAND-equivalent
+```
+
+This reframed the whole result: the CPU core is **~3% of the gate budget**. What
+dominates is memory, and therefore code density — which is precisely where
+SUBLEQ's 3-words-per-instruction encoding hurts. Whole-computer totals: 27406 vs
+31841, SUBLEQ 1.16x larger.
+
+### 8. Real timing, not just cycles
+
+Cycle counts alone can't answer "which is faster" — SUBLEQ's longer critical path
+had to be measured. Installed `nextpnr-ice40`, wrote `rtl/top.v` wrapping each
+CPU with an inferred 1024x16 block RAM, synthesised with `synth_ice40` and placed
+and routed on an HX8K across 4 seeds:
+
+```
+top_acc routed Fmax: 111.66  101.43  103.71   95.40 MHz   (mean ~103)
+top_sub routed Fmax:  78.06   72.33   72.04   74.33 MHz   (mean  ~74)
+```
+
+Ran multiple seeds deliberately — a single P&R run has enough placement noise to
+be misleading, and the spread (95-112 vs 72-78) shows the gap is real and not
+seed luck. SUBLEQ is 28% slower per clock; its critical path is
+subtract -> compare-to-zero -> PC mux -> address mux -> RAM address.
+
+**Final answer: 2698 cycles @ 103 MHz = 26.2 us, versus 4795 cycles @ 74 MHz =
+64.6 us. The accumulator machine is 2.47x faster.**
+
+One gotcha: `grep`ping nextpnr output for "Max frequency" catches both the
+post-placement estimate and the post-routing number, and also the target
+frequency echoed in the FAIL message. Had to take the *last* match and strip the
+target to get the real routed figure.
+
+### 9. Biases audit
+
+Before writing up, went looking for ways the setup could be unfairly tilted, and
+recorded both directions in `project.md`:
+
+* *Against SUBLEQ*: the single 16-bit port. With a 48-bit instruction fetch,
+  SUBLEQ would drop to ~3 cycles per instruction (~2400 cycles) and would win on
+  cycle count. It would not win on system gates, because the wider memory costs
+  more than the core difference saves.
+* *Against the accumulator machine*: the 4-instruction set has no `ADD` and no
+  unconditional `JMP`, so `a += b` costs six instructions and every unconditional
+  jump costs two. Adding both would roughly halve its cycle count for ~40 gates,
+  which makes the measured 2.47x a floor rather than a ceiling.
+
+### 10. Repository setup
+
+Restructured the flat working directory into `rtl/`, `sw/`, `synth/` with a
+`Makefile` that reproduces every published number, plus `project.md` and this log.
+
+Issues hit while doing it:
+
+* Moving sources into `rtl/` broke every hardcoded path: the Yosys scripts'
+  `read_verilog`, the testbench's `` `include "params.vh" `` and its three
+  `$readmemh` calls. Fixed by pointing generated artefacts at `build/` and
+  sources at `rtl/`, and having `sw/asm.py` create `build/` itself.
+* `yosys -p "read_verilog -DNWORDS=136 ..." -s script.ys` does **not** run the
+  `-p` command before the `-s` script — the script ran first and died with
+  "Module `ramg' not found". Replaced with `synth/gates_ram.sh`, which passes the
+  size via `chparam -set N` inside a single `-p` chain.
+* `/mnt/user-data/outputs` is mounted `noexec`, so `./build/sim` fails there with
+  "Permission denied". The Makefile is correct; verification runs were done from
+  a copy under `$HOME`. Worth knowing for anyone re-running in the same sandbox.
+* Kept the RAM area model's address width at 8 bits (`ceil(log2(157))`) for both
+  sizes, so the address-decoder cost is measured on equal terms.
+
+Verified end to end from a clean tree: `make` reproduces the cycle counts, the
+verification pass, and both gate counts; `make fmax` reproduces the frequencies.
+
+### 11. Git
+
+`git init`, `.gitignore` for `build/` and simulator/P&R artefacts, single initial
+commit of the RTL, software, synthesis scripts, Makefile and documentation.

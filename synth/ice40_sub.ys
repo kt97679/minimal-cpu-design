@@ -1,0 +1,5 @@
+# Map the whole computer (CPU + 1024x16 RAM) to iCE40 primitives for nextpnr.
+read_verilog rtl/top.v rtl/subleq_cpu.v
+synth_ice40 -top top_sub
+write_json build/sub.json
+stat
