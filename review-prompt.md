@@ -36,7 +36,10 @@ WHAT THE ARTICLE REPORTS, AND HOW THE NUMBERS WERE PRODUCED
 This matters for judging whether the conclusions follow, so read it before the
 article itself.
 
-- Several CPU designs were written in Verilog, simulated with Icarus Verilog,
+- The project began as a two-way comparison, SUBLEQ against a four-instruction
+  accumulator machine (load, store, subtract, branch-if-zero), and widened into
+  a search for the instruction set that costs the fewest gates. Several CPU
+  designs were written in Verilog, simulated with Icarus Verilog,
   and synthesised with Yosys mapped to 2-input NAND gates (`abc -g NAND`), with
   every flip-flop normalised to a plain D type and counted as 6 NANDs. All gate
   figures are measured, not estimated.

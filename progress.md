@@ -1134,3 +1134,37 @@ of the five reviewers have independently said the current closing lands. Kept,
 recorded as a judgement call.
 
 `review-prompt.md` claim 4 updated in the same commit, per its own note.
+
+### 48. The four-instruction machine was never introduced
+
+Raised against the Russian text: "Ядро той первой четырёхинструкционной машины"
+refers to a machine the article has not mentioned. Checking the English, the
+same hole is there and is arguably worse — the opening said "running real
+programs on both designs", and never says which two. The four-instruction
+accumulator machine is the reason the project exists and it first appears, with
+a definite article, two sections in.
+
+Fixed in both languages by splitting the opening into two paragraphs: the first
+names the contest (SUBLEQ against the smallest conventional machine I could
+construct — load, store, subtract, branch-if-zero), the second says SUBLEQ lost
+and that chasing the reason turned a two-way comparison into a search for the
+minimum. That also gives the piece the shape it actually had, instead of
+starting mid-search.
+
+While fixing it, a second gap in the same area: the regime table starts at seven
+instructions with no explanation of where four and five went. Added the
+five-instruction row (59,125 gates) and a paragraph saying the original
+four-instruction set cannot run the suite at all — with only branch-if-zero and
+subtract there is no bounded-time comparison, so deciding `a < b` costs steps
+proportional to the values. It needs branch-on-sign before it can sort anything,
+which is why the ladder starts at five. That fact was in `project.md` from phase
+3 and had never made it into the article, where it answers the obvious question.
+
+Two process notes. Patch-by-string-replacement against a wrapped file kept
+failing, because the wrapping moves under the replacement; wrote `/tmp/edit.py`
+to unwrap paragraphs, edit, and rewrap, which is how the later edits in this
+session were done. And a `python3 -c` with backticks inside a double-quoted
+shell string silently ate the code span in `«`a < b`»`, leaving `«»` in the
+Russian text — caught by reading the result, not by the command succeeding.
+
+`review-prompt.md`'s method summary updated in the same commit, per its own note.

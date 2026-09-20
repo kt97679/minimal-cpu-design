@@ -8,11 +8,18 @@ Turing-complete. You can compile C to it. People build them on FPGAs for fun.
 A natural question is whether that minimality also buys a smaller machine —
 fewer gates in total, counting the memory as well as the processor.
 
-I decided to find out by building it — not by reasoning about it, but by
+I decided to find out by building both — not by reasoning about it, but by
 writing the RTL, synthesising down to 2-input NAND gates with Yosys, and
-running real programs on both designs in simulation. The answer is no. The
-interesting part is why, and it turns out to depend far less on instruction
-count than on something else entirely.
+running real programs in simulation. The contest was SUBLEQ against the
+smallest conventional machine I could construct: a four-instruction accumulator
+with load, store, subtract, and branch-if-zero.
+
+SUBLEQ lost, and lost heavily. But it lost for a reason I had not expected, and
+chasing that reason turned a two-way comparison into a search for the
+instruction set that costs the fewest gates outright. The short answer to the
+original question is that minimality does not buy you a smaller machine. The
+longer answer is that how many instructions you have matters far less than
+something else entirely.
 
 ## The exchange rate
 
@@ -52,10 +59,18 @@ looking at directly because it is the break-even rule doing its work:
 
 | instructions | program in writable RAM | program in ROM |
 |---|---:|---:|
+| 5 | 59,125 | not eligible |
 | 7 | 49,477 | not eligible |
 | 10 | 47,295 | **7,078** |
 | 12 (adds two immediate forms) | **45,927** | 7,325 |
 | 14 (adds AND, OR, XOR, shift) | 47,497 | 7,280 |
+
+The original four-instruction set is not in that table, because it cannot run
+the suite at all: with only branch-if-zero and subtract there is no
+bounded-time way to compare two numbers, so deciding `a < b` costs steps
+proportional to the values themselves. It needs a fifth instruction —
+branch-on-sign — before it can sort anything, which is why the ladder starts at
+five.
 
 So there is a break-even rule, concrete and scoped: while the program must live
 in writable RAM, an instruction is worth adding if it removes at least one word
