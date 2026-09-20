@@ -778,3 +778,18 @@ Figures in the article are the same measured ones used in `DESIGN.md`: 196
 gates per RAM word against 4.3 per ROM word, the 210-gate index register buying
 a 42,399-gate saving, 7,078 gates total for the winning machine, and SUBLEQ
 going from 164,783 to 8,848 once given the same memory-mapped ports.
+
+### 41. Review prompt
+
+Added `review-prompt.md`: a prompt for having `ARTICLE.md` critiqued by a model
+or reviewer that has not seen this work. Written to draw out objections rather
+than praise — it states the method and its modelling choices up front so the
+reviewer can judge whether the conclusions follow, names the six load-bearing
+claims so each is attacked individually rather than the piece being assessed as
+a whole, declares new experiments and renumbering out of scope, and puts "what
+it does well" last and conditional on being true.
+
+The modelling choices most likely to be challenged are listed explicitly in the
+prompt rather than left for the reviewer to find: flip-flop RAM instead of SRAM,
+a small benchmark, and the 16-word array being a large share of the winning
+design's memory.
