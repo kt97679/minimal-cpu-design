@@ -1088,3 +1088,49 @@ instruction is not cheaper than ten". But the title is true of plain SUBLEQ, the
 reversal is deliberate and signposted ("the curve turned out to be a sideshow"),
 and a title that already contains the article's conclusion gives a reader less
 reason to read it. Recorded as a judgement call rather than an oversight.
+
+### 47. Fifth review: two accepted, one refuted by arithmetic
+
+Diminishing returns, but three points were worth acting on and one was worth
+checking rather than accepting.
+
+**Accepted.** "Which side of the boundary a machine lands on has nothing to do
+with how many instructions it has" overstated: the cheap group is not flat, it
+spans 7,078 to 8,848. Softened to "depends far less on instruction count than on
+whether the program can be kept read-only", and the article now says something
+more interesting in its place — the spread inside the group does not track
+instruction count either, since the fourteen-operation machine beats the
+twelve-operation one. Also added that ROM eligibility is binary with no partial
+credit, and a forward pointer from the 6.7x to the hybrid-store caveat at the
+end of the section, which previously appeared without warning.
+
+**Accepted.** "SUBLEQ's area penalty was driven far more by addressing than by
+having one instruction" now says "one opcode", and notes that the three-word
+instruction format survives the port change untouched and is most of the 25%
+still separating the ported SUBLEQ from the winner. That is a more precise
+attribution of what the ports did and did not fix.
+
+**Refuted.** The reviewer argued that the twelve-word density calculation and
+the measured seven-versus-ten delta "are not the same experiment", the latter
+still containing a self-modification tax. Checked: twelve words at 196 gates
+less 198 gates of extra core predicts 2,154; measured is 2,182. A 28-gate
+residual, which is synthesis noise, not a tax. They are the same experiment and
+they agree. Rather than leave "confirms it" as an assertion, the article now
+shows the arithmetic — which is a better paragraph than either version, so the
+point was productive even though its premise was wrong.
+
+**Smaller, accepted:** "a quarter of that first CPU" -> "that first core"
+(against the final processor it is nearer an eighth); "the curve turned out to
+be a sideshow" -> "secondary", since with the two-regime table the curve now
+does real work predicting both minima; "a rounding error beside its real one" ->
+"an order of magnitude smaller than its real one", which is the same claim
+without the swagger; and the Jones paragraph now pre-empts the obvious objection
+by saying why a destination field selecting the operation is not merely a
+memory-mapped control register.
+
+**Declined:** rewriting the closing sentence to "enabling the program to live in
+ROM without self-modification". More literally accurate, but flatter, and three
+of the five reviewers have independently said the current closing lands. Kept,
+recorded as a judgement call.
+
+`review-prompt.md` claim 4 updated in the same commit, per its own note.

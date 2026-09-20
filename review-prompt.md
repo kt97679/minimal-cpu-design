@@ -75,9 +75,10 @@ disagree, the article governs: quote the article, not this list.
    cheapest set measured is twelve instructions (45,927 gates); with it in ROM
    the cheapest is ten (7,078), and past that the ROM column varies by only
    3.5%.
-4. The measured designs fall into two clusters. The cheapest design that cannot
+4. The measured designs fall into two groups. The cheapest design that cannot
    index without self-modifying code is 6.7x larger than the cheapest design
-   that can; inside the cheap cluster everything is within 25%.
+   that can; inside the cheap group everything is within 25%, and the spread
+   there does not track instruction count.
 5. The same ten-instruction machine running the same program costs 47,295 gates
    with its code in RAM and 9,344 with it in ROM. The ~200 gates of index
    register do not save those 37,951 gates; they make them saveable. (Moving
