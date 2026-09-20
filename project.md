@@ -383,7 +383,11 @@ with zero output mismatches.
 7-instruction machine on area x time, and 67x better than SUBLEQ. The curve turns
 up at 14, where four unused instructions add 202 gates and save nothing.
 
-## Why the index register is worth far more than its 148 gates
+## Why the index register is worth far more than its gates
+
+*(Figures in this section are the phase 3 measurements, at that phase's address
+width. Phase 4 re-measures the same group at 198-210 gates depending on whether
+the output port is synthesised with the CPU; see DESIGN.md.)*
 
 `LDX/LDAX/STAX` cost 148 gates of core and save only 12 words of program — by the
 phase 2 exchange rate that is roughly break-even. The real effect is
@@ -587,11 +591,10 @@ The 14-instruction variant remains strictly worse.
 
 | | gates | share |
 |---|---:|---|
-| 16-word sort array (RAM) | ~2,600 | 37% |
-| CPU core | 1,509 | 21% |
-| 7 scalar variables (RAM) | ~1,130 | 16% |
-| 212-word code+constant ROM | ~912 | 13% |
-| RAM decode, mux, glue | ~930 | 13% |
+| data RAM, 23 words (16-word array + 7 scalars, with decode and mux) | 4,597 | 65% |
+| CPU core plus output port | 1,509 | 21% |
+| 212-word code+constant ROM | 912 | 13% |
+| address decode and glue | 60 | 1% |
 
 Over half is the benchmark's own working set. **No instruction set can remove
 it**, which is the sense in which this optimisation is finished.

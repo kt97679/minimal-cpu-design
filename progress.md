@@ -994,3 +994,97 @@ prompt still appears in the article.
 **Not applied:** the suggestion to give both the 3% and 21% figures up front and
 to condition the exchange rate on writable memory — both were already done in
 the previous revision, which is exactly the drift described above.
+
+### 46. Fourth review: the best one, and it cost the most
+
+This reviewer read the repository rather than only the article, declared that
+deviation from the prompt up front, and found three real problems plus two stale
+figures I had left lying around. Nearly all of it is accepted.
+
+**1. The controlled comparison still carried a confound.** Session 44 replaced
+an uncontrolled pair with "the same machine costs 47,295 gates with code in RAM
+and 7,078 with it in ROM". But 7,078 is the `ROM=code+RO` column — code *and
+constants* in ROM — while the column that isolates code placement is `ROM=code`
+at 9,344. The 2,266-gate difference is the constants relocation, which
+`DESIGN.md` itself labels a memory-map change available to any design. So the
+figure overstated the index register's leverage by 2,266. Now stated as 47,295
+to 9,344 = 37,951, with the constants move given separately as the route to the
+headline 7,078. Two rounds of fixing the same sentence; it is now actually
+controlled.
+
+**2. "Bottoms out at ten" was false in the regime its own section had just
+defined.** The sentence sat inside the section scoped to programs in writable
+RAM, and in the all-RAM column the minimum is *twelve* (45,927), not ten
+(47,295). Ten wins only once code is in ROM — a condition that section had not
+yet introduced. Worse, the supporting argument skipped the twelve-instruction
+variant, which is the actual next point on the curve and goes *down*.
+
+The fix is a strict improvement on the original claim, so it is worth recording
+in full. Both minima are now shown in a table, and the break-even rule predicts
+them: the two immediate instructions cost 182 gates of core and remove eight
+program words, worth 1,568 in RAM, so they should come out ~1,386 ahead — and
+measured, they come out 1,368 ahead. In ROM the same eight words are worth ~34,
+so the same instructions are a net loss and the minimum moves to ten. A rule
+that predicts a different optimum in each regime, to within 1.3%, is much better
+evidence than a rule stated once and left.
+
+Also added: past the minimum the ROM column runs 7,078 / 7,325 / 7,280, so
+"turns back up" is a 3.5% wobble there rather than a cliff.
+
+**3. The two-group split assumes a monolithic program store, and the article
+never said so.** The expensive group exists because I priced any design that
+writes one program word as though every program word were RAM. The addresses a
+self-modifying program patches are link-time constants, so a store could be
+split into ROM plus a handful of individually decoded writable words — five of
+them for the seven-instruction machine — which the reviewer estimates lands near
+8,000 gates, inside the cheap group. I have not built it. The article now says
+so plainly, prices the sketch as a sketch, and notes that the last time I
+reasoned about an unbuilt design here (the MOVE machine) I got both area and
+timing wrong in opposite directions. What survives is narrower: the index
+register removes the need for a writable window at all, and 6.7x is what the
+simple one-ROM-one-RAM map costs you for lacking it.
+
+**Smaller fixes, all accepted:** the 3% figure is now labelled as coming from
+the design whose 100-word output array I later replaced; "a quarter of the
+entire CPU" is "a quarter of *that first* CPU" (against the final processor it
+is 13%); "no comparison primitive" is wrong — SUBLEQ branches on the sign of a
+difference, which is the same primitive the winner uses — corrected to "no
+comparison that leaves its operands intact"; the 196 figure names the store it
+came from; the Sakamoto ratios are marked as core-area-only; the `operations`
+column is defined on first use, which removes an apparent contradiction with
+"still one instruction" two sections later; "two clusters, nothing in between"
+became "two groups ... among the designs I built"; the 38 flip-flops regained
+the "including the FSM" qualifier that made 16+8+8 add up; and the 7,078
+breakdown regained the 60-gate glue row that made it sum.
+
+**One I had been wrong about twice.** A previous reviewer said the twelve saved
+words were worth ~2,350 gates, not ~50, and I rejected it on the grounds that
+they end up in ROM. That was answering a different question. The question is
+whether code density justifies buying the index register, and the counterfactual
+for that is *no index register*, where the words are RAM. Priced correctly,
+density alone repays the register about tenfold — and the measured
+seven-versus-ten row confirms it at 2,182 gates. Both prices are now given. The
+section is stronger for it: it stops a reader suspecting the ~50 was chosen
+because it was the small number.
+
+**Two stale figures in the repository**, which the reviewer found by grepping
+and which would have been found by anyone else the same way. `README.md` and
+`project.md` still described the index register as costing 148 gates, the
+phase 3 measurement, against the article's ~200. And `project.md`'s phase 4
+budget decomposed the 7,078 differently from `DESIGN.md` — array + scalars +
+decode versus data RAM + glue — so the two could not both be right. The phase 3
+section is now labelled as phase 3 figures, and the budget table matches
+`DESIGN.md`.
+
+While reconciling those I found a third, unreported by anyone: the index group
+measures +210 gates on the CPU alone and +198 synthesised together with the
+output port. Both are correct; they differ by synthesis sharing across a module
+boundary. `DESIGN.md` now records both, and the article says "about 200" rather
+than claiming three significant figures it cannot support.
+
+**Declined:** retitling. The reviewer is right that the body spends its second
+half arguing instruction count is the wrong axis, which sits oddly against "one
+instruction is not cheaper than ten". But the title is true of plain SUBLEQ, the
+reversal is deliberate and signposted ("the curve turned out to be a sideshow"),
+and a title that already contains the article's conclusion gives a reader less
+reason to read it. Recorded as a judgement call rather than an oversight.

@@ -75,8 +75,8 @@ provably runs the same algorithm.
 **Ten instructions wins** — 4.8x better than seven on area x time, 67x better
 than SUBLEQ, with the curve turning up at 14.
 
-The index register is the reason, and not for the obvious reason. It costs 148
-gates and saves only 12 words of program. What it actually does is remove the
+The index register is the reason, and not for the obvious reason. It costs
+~200 gates and saves only 12 words of program. What it actually does is remove the
 need for self-modifying code, which lets the whole program move from RAM
 (~196 gates/word) into ROM (~4 gates/word). **ROM eligibility is an ISA
 property**, and on any workload with array indexing exactly one instruction group

@@ -54,7 +54,9 @@ article itself.
   small virtual ISA and macro-expanded per target, so every machine provably
   runs the same algorithm on the same data. Every design was verified in RTL
   simulation against a golden model before any gate was counted.
-- Known caveats the author is aware of: the benchmark is small; comparison is
+- Known caveats the author is aware of: the expensive cluster assumes a
+  monolithic writable program store, and a hybrid store with a few individually
+  decoded writable words is sketched but not built; the benchmark is small; comparison is
   done by subtract-and-test-sign, so test values are kept under 2^14 to avoid
   overflow; and the 16-word array is a large fraction of the final design's
   memory.
@@ -69,14 +71,18 @@ disagree, the article governs: quote the article, not this list.
 2. While the program must live in writable RAM, an instruction pays for itself
    if it removes at least one word of program per 196 gates it costs — and this
    rule stops applying once the program can live in ROM.
-3. Total gate count over instruction-set size has a minimum at ten instructions
-   among the sets measured, and rises after it.
+3. The minimum moves with the regime: with the program in writable RAM the
+   cheapest set measured is twelve instructions (45,927 gates); with it in ROM
+   the cheapest is ten (7,078), and past that the ROM column varies by only
+   3.5%.
 4. The measured designs fall into two clusters. The cheapest design that cannot
    index without self-modifying code is 6.7x larger than the cheapest design
    that can; inside the cheap cluster everything is within 25%.
 5. The same ten-instruction machine running the same program costs 47,295 gates
-   with its code in RAM and 7,078 with it in ROM. The index register's 210 gates
-   do not save 40,217 gates; they make 40,217 gates saveable.
+   with its code in RAM and 9,344 with it in ROM. The ~200 gates of index
+   register do not save those 37,951 gates; they make them saveable. (Moving
+   read-only constants to ROM as well gives the headline 7,078, but that is a
+   memory-map decision available to any design.)
 6. SUBLEQ's area penalty in this experiment is driven far more by addressing
    than by instruction count: given two memory-mapped ports it drops from
    164,783 gates to 8,848.

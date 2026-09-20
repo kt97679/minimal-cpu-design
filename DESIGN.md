@@ -116,6 +116,11 @@ Core cost by instruction group, measured at identical address width:
 | `+ JMP` | 1,125 | +66 |
 | `+ LDX LDAX STAX` | 1,335 | +210 |
 
+Measured on the CPU alone. Synthesised together with the output port (the `core`
+column of the phase 4 table) the same group comes to +198; the 12-gate
+difference is synthesis sharing across the module boundary. The article rounds
+this to "about 200".
+
 ## Why the index register is the whole design
 
 Neither machine can say "element `i` of the array" in an instruction — the
