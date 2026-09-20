@@ -870,3 +870,149 @@ the work that an opcode would otherwise do. In the MOVE machine that is the whol
 architecture; in ported SUBLEQ it is two addresses. Once a machine is competitive,
 the instruction count has stopped describing anything real about it — which is
 probably the most useful thing this project has to say about OISCs.
+
+---
+
+# Phase 7: searching the space instead of choosing from it
+
+## The objection
+
+Every design compared in phases 1-6 was one I picked, and the ones I picked are
+the branches that historically existed: SUBLEQ, an accumulator machine, a
+PDP-8-alike, Jones's MOVE machine. A model that has read the history of computer
+architecture proposing those four and then announcing which one wins is not
+running a search. It is recalling an answer and dressing it as an experiment.
+
+Raised by a reader, and correct. The response is not an argument, it is code.
+
+## What is mechanical now
+
+**The instruction pool is enumerated, not curated.** It is the cross product
+{LD, ADD, SUB, AND, OR, XOR} x {direct, immediate, indexed}, plus store in two
+modes, plus a branch for every one of the six ways to test the outcome classes
+{negative, zero, positive}, plus index and shift instructions. 31 candidates.
+Nothing is in the pool because a real machine had it and nothing is out because
+none did.
+
+**Code generation is a search.** For every virtual operation, a breadth-first
+search over instruction sequences, verified on random test vectors. There are no
+hand-written macro expansions at all. Branch sequences are found by covering the
+required outcome classes with whatever conditional jumps the candidate set
+happens to contain.
+
+**The Verilog is generated from the instruction list**, so the decoder matches
+the set exactly, and is synthesised for real.
+
+**The starting points are rejection-sampled.** Random 16-instruction subsets are
+drawn and thrown away until one can run the benchmark, which happens about 5% of
+the time. Then local search adds, drops and swaps single instructions.
+
+## The compiler reproduces the hand-written code
+
+The first useful result is a control: given the phase 4 instruction set, the
+search-based compiler emits exactly the sequences I wrote by hand in phase 3.
+`mov` is `LD_D s; ST_D d`. `add` is `LD_D d; ADD_D s; ST_D d`. Given a set with
+no ADD it finds, unprompted, the six-instruction
+`LD_D Kz; SUB_D d; ST_D t0; LD_D s; SUB_D t0; ST_D d` — the a + b = a - (0 - b)
+expansion I had written by hand. Given a set with JN and JNN but no JZ it
+correctly reports that the set cannot isolate the zero case and is unusable.
+
+It also caught two bugs in my own abstract machine: it was exploiting an
+accumulator initialised to zero on entry, and it was clobbering the destination
+before the final store, which breaks at the `add p,p` call site in the suite.
+Both fixed before any search was run.
+
+## Calibration
+
+The search prices memory from the per-word figures measured in phases 1-4 and
+synthesises each candidate core for real. Against three designs measured
+end-to-end in phase 4:
+
+| design | model | measured | cycles model | cycles measured |
+|---|---:|---:|---:|---:|
+| 10-instruction winner | 6,846 | 7,078 | 10,345 | 10,333 |
+| 7-instruction | 50,120 | 49,477 | 11,025 | 11,013 |
+| 5-instruction | 59,706 | 59,125 | 14,885 | 14,873 |
+
+Cycles within 0.1%, gates within 3%.
+
+## Results, twelve restarts
+
+| gates | n | cycles | scheme | instruction set |
+|---:|---:|---:|---|---|
+| **6,771** | **8** | 13,185 | reg | JN JZ LDX_D LD_D LD_X ST_D ST_X SUB_D |
+| 6,782 | 9 | 13,185 | reg | + SUB_X |
+| 6,845 | 11 | 10,345 | reg | ADD_D JMP JN JZ LDX_D LD_D LD_X ST_D ST_X SUB_D SUB_X |
+| 6,883 | 11 | 10,665 | reg | ADD_D ADD_X JMP JN JP LDX_D LD_D LD_X ST_D ST_X SUB_D |
+| 6,887 | 10 | 10,665 | reg | ADD_D JMP JN JP LDX_D LD_D LD_X ST_D ST_X SUB_D |
+| 6,910 | 12 | 11,053 | reg | ...JNN instead of JN... |
+| 50,118 | 8 | 11,025 | patch | ADD_D JMP JN JZ LD_D ST_D SUB_D SUB_X |
+| 50,120 | 7 | 11,025 | patch | ADD_D JMP JN JZ LD_D ST_D SUB_D |
+| 59,367 | 10 | 12,226 | patch | ...LD_I instead of LD_D... |
+
+Three things fall out.
+
+**The two-group split is reproduced, not assumed.** Every run that chose the
+index-register scheme landed between 6,771 and 6,910 gates; every run that chose
+self-patching landed between 50,118 and 59,367. The search found the boundary
+that phases 3-6 argued for, without being told it existed.
+
+**My hand-designed machine is a local optimum, and the search finds it.** The
+third row is the phase 4 winner plus `SUB_X`, at 6,845 against the model's 6,846
+for the phase 4 set itself. Independent confirmation that the hand design was
+not wrong.
+
+**But it is not the optimum, and the way it loses is the bias the objection
+predicted.** The best set found is eight instructions with **no ADD and no
+JMP** — every historical accumulator machine has both, and I never questioned
+including them. In the ROM regime they do not pay for themselves:
+
+* `ADD_D` costs about 149 gates of core. Dropping it makes `add` six words
+  instead of three; across eight call sites that is 24 extra words of ROM at 4.3
+  gates each, 103 gates. Net saving: 46 gates.
+* `JMP` costs about 66 gates. Dropping it makes `jmp` two words instead of one;
+  ten sites, 43 gates of ROM. Net saving: 23 gates.
+
+Predicted total 69 gates; measured difference 74. This is the article's own
+break-even rule, applied in the regime where a program word costs 4.3 gates
+rather than 196 — and I did not apply it. The article says instruction count
+"stops mattering much" past the boundary. The search shows something sharper:
+past the boundary you should be *removing* instructions, and the two I kept are
+exactly the two that every real accumulator machine has.
+
+## On the objective
+
+The winner is 1.1% smaller and 27% slower. On gates alone, which is what this
+project set out to minimise, it wins. On gates x time the hand design wins,
+89.3M against 70.8M. Which answer is correct depends on the objective, and the
+honest statement is that the stated objective picks the search's machine.
+
+## Verification
+
+The winner was checked end-to-end rather than trusted from the model: its
+Verilog was generated, a program exercising all eight opcodes and both branch
+outcomes was assembled against it, and the result was compared between a
+reference emulator and Icarus Verilog running the generated RTL. They agree
+exactly, including the double-subtract addition, the indexed load and store, and
+the branches that must not be taken.
+
+## What is still biased, stated plainly
+
+* **The skeleton.** One accumulator, an optional index register, memory
+  operands, a single-port synchronous memory, a 16-bit word and a 4-bit opcode
+  field. The search explores instruction sets within that frame; it does not
+  question the frame. A stack machine, a two-address machine or a transport
+  architecture cannot be reached from here.
+* **The two array-access strategies.** An index register and in-place patching
+  are both offered to every candidate, and the search picks between them by
+  cost. It did not invent either.
+* **The benchmark and the memory model**, unchanged from phase 3, with the
+  qualifications already recorded.
+* **The search is local**, from rejection-sampled starts. Twelve restarts over a
+  space of C(31, <=16) subsets is sampling, not exhaustion.
+
+The honest summary is that this moves the work from "I compared four machines I
+already knew about" to "I searched a mechanically enumerated instruction space
+within an architecture I chose." That is a real improvement and a partial
+answer. It is not a machine designed from nothing, and the sections above should
+not be read as claiming otherwise.
