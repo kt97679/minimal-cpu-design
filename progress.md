@@ -885,3 +885,59 @@ carried 215 for the phase 2 equivalent, where the measurement is 216. Both
 corrected everywhere they appeared. Neither changes any argument, but a wrong
 number in the one document outsiders will read is worse than a wrong number
 anywhere else in the repository.
+
+### 44. Second external review: three real errors
+
+A sharper review than the first. Three of its findings are errors rather than
+matters of emphasis, and all three are now fixed.
+
+**1. The 25% claim was simply false as written.** The article said "inside a
+cluster the instruction set is worth at most 25%". That is true of the cheap
+cluster (7,078 – 8,848 = 1.25x) and false of the expensive one (47,295 –
+164,783 = 3.48x), and a reader can compute the contradiction from the table
+printed directly above the sentence. `README.md` had the correct formulation all
+along — "everything in the cheap cluster is within 25% of everything else" — and
+the article had generalised it while rewording. Now scoped to the cheap cluster.
+
+**2. The break-even rule was stated unconditionally when it only holds for RAM.**
+"An instruction is worth adding if it removes one word of program per 196 gates"
+is a rule about program words priced as writable memory. In ROM a word costs 4.3
+gates, so the same instruction would have to remove forty-seven words to justify
+200 gates of decode. The article introduced the rule in section two and then
+spent section four demolishing its premise without ever saying so. Now the rule
+carries its condition explicitly, a sentence at the end of that section tells the
+reader the condition is about to be removed, and the ROM argument closes the loop
+by retiring the rule — which also explains, rather than merely asserting, why the
+cheap cluster is so flat.
+
+**3. "210 gates bought a 42,399-gate saving" was not a controlled comparison.**
+It subtracted the 7-instruction machine's total from the 10-instruction
+machine's, so the difference contained a different program, a different program
+size, the memory-map changes and the index hardware all at once. Replaced with a
+genuinely controlled pair: the *same* ten-instruction machine running the *same*
+program costs 47,295 gates with its code in RAM and 7,078 with it in ROM, and
+the index register is the only reason the second is legal. The wording now says
+the 210 gates "do not save 40,217 gates; they make 40,217 gates saveable",
+which is the claim the evidence actually supports.
+
+**Also fixed:** "all figures are measured" sat in the same document as
+transistor-per-bit rules of thumb, which a hostile reader could fairly call out —
+the footer now separates measured results from technology estimates, and the
+"order of magnitude" phrasing has been dropped. The 21% figure is core *plus
+output port*, now stated as such. Sakamoto et al. get their full four-author
+attribution and the paper title. "Five memory accesses" is marked as an
+implementation property of my SUBLEQ, not of SUBLEQ. The 196 figure is described
+as the synthesised RAM at these sizes rather than an intrinsic cost of a word.
+"Never really about having one instruction" narrowed to "in this experiment".
+The PDP-8 line no longer claims causal inevitability, Jones's Ultimate RISC is
+dated and defined, and "the same privilege" became "the same hardware
+facilities".
+
+**Partially accepted:** the reviewer proposed reordering the article so that
+ROM-eligibility leads and the instruction-count curve follows, which would make
+the conclusion feel more inevitable. I kept the discovery order — it is the
+article's spine, and the piece is honest that the curve turned out to be a
+sideshow — but adopted the substance of the point by scoping the break-even rule
+on first use and signposting forward to where it gets retired. The logical
+inversion the reviewer identified was real; the fix did not require the
+restructure.

@@ -5,32 +5,34 @@ set computer. The most famous version is SUBLEQ: subtract one memory word from
 another, and branch if the result is not positive. That single operation is
 Turing-complete. You can compile C to it. People build them on FPGAs for fun.
 
-Most of the stated interest is pedagogical and theoretical, but alongside it
-runs an implicit hope: that minimality also buys a smaller machine.
+A natural question is whether that minimality also buys a smaller machine.
 
-I decided to check that hope by building it — not by reasoning about it, but by
-writing the RTL, synthesising down to 2-input NAND gates with Yosys, and running
-real programs on both designs in simulation. The answer is no. The interesting
-part is why, and it turns out to have almost nothing to do with instruction
-counts.
+I decided to find out by building it — not by reasoning about it, but by writing
+the RTL, synthesising down to 2-input NAND gates with Yosys, and running real
+programs on both designs in simulation. The answer is no. The interesting part
+is why, and it turns out to have almost nothing to do with instruction counts.
 
 ## The exchange rate
 
 The first measurement reframed the question. Building a computer out of gates
-means building its memory out of gates too, and a 16-bit word of gate-level RAM
-costs about 196 NAND-equivalents: sixteen flip-flops (each normalised to a
-six-NAND D type), its own write decoder, and its share of the read multiplexer.
+means building its memory out of gates too, and the synthesised gate-built RAM
+works out to about 196 NAND-equivalents per 16-bit word at the sizes involved
+here: sixteen flip-flops (each normalised to a six-NAND D type), its own write
+decoder, and its share of the read multiplexer.
 
 The CPU core of that first four-instruction machine, by comparison, was 806
 gates against 27,406 for the whole design — three percent. Even in the much
-leaner machine this ends with, the core is only 21%.
+leaner machine this ends with, the processor logic plus its output port is only
+21%.
 
-That gives you an exchange rate: one word of program costs about a quarter of
-the entire CPU. Any instruction that removes even a handful of program words
-pays for itself immediately. This is the opposite of the intuition that minimal
-instruction sets are cheap, and it is why SUBLEQ loses — three words per
-instruction, five memory accesses each, and no comparison primitive, so every
-`if` becomes a macro.
+That gives you an exchange rate, and it is worth stating the condition on it up
+front, because the condition turns out to be the whole story: **so long as the
+program has to live in writable memory**, one word of program costs about a
+quarter of the entire CPU. Any instruction that removes program words pays for
+itself almost immediately. This is the opposite of the intuition that minimal
+instruction sets are cheap, and it is why SUBLEQ loses in this implementation —
+three words per instruction, five memory accesses each, and no comparison
+primitive, so every `if` becomes a macro.
 
 ## The curve, and where it turns
 
@@ -38,19 +40,24 @@ Sweep instruction sets across a five-program benchmark suite — Fibonacci,
 insertion sort, shift-and-add multiply, Euclid's GCD, binary-to-decimal — and
 the total gate count falls steeply as you add instructions, then turns back up.
 
-Among the sets I measured it bottoms out at ten. Below that you pay in program
-size: without `ADD`, computing `a + b` takes six instructions instead of three;
-without an unconditional jump, every `goto` costs two. Above ten you pay in
-decode logic for instructions the workload never executes — adding `AND`, `OR`,
-`XOR` and a shift cost 202 gates and saved nothing at all.
+Among the instruction sets I measured, total area bottoms out at ten. Below that
+you pay in program size: without `ADD`, computing `a + b` takes six instructions
+instead of three; without an unconditional jump, every `goto` costs two. Above
+ten you pay in decode logic for instructions the workload never executes —
+adding `AND`, `OR`, `XOR` and a shift cost 202 gates and saved nothing at all.
 
-So there is a break-even rule, concrete under this cost model: an instruction is
-worth adding if it removes at least one word of program per 196 gates it costs.
-Cheap instructions clear that bar easily. Instructions that add new datapath
-usually do not — which matches what Sakamoto and Anderson found independently
-when they extended SUBLEQ: a second instruction reusing the existing subtractor
-cost 1.33x area for a 2.78x speedup, while variants adding a dedicated shifter
-or multiplier cost 1.87x and 5.86x and ran slower in wall-clock terms.
+So there is a break-even rule, concrete and scoped: for a program that must live
+in writable RAM under this cost model, an instruction is worth adding if it
+removes at least one word of program per 196 gates it costs. Cheap instructions
+clear that bar easily; instructions that add new datapath usually do not — which
+is qualitatively consistent with what Sakamoto, Ahmed, Anderson and Hara-Azumi
+measured in *Subleq⊖: An Area-Efficient Two-Instruction-Set Computer*, where a
+second instruction reusing the existing subtractor cost 1.33x area for a 2.78x
+speedup, while variants adding a dedicated shifter or multiplier cost 1.87x and
+5.86x and ran slower in wall-clock terms.
+
+Hold on to that condition about writable RAM. The next section removes it, and
+takes the rule with it.
 
 ## The finding that mattered
 
@@ -63,10 +70,11 @@ built falls into one of two clusters, with nothing in between:
 | can index without self-modifying code | 7,078 – 8,848 | 3–14 |
 
 The boundary is whether the machine can index an array without modifying its own
-code. Inside a cluster the instruction set is worth at most 25%; across the
-boundary it is worth 7x — and which side a machine lands on has nothing to do
-with how many instructions it has. (The top of the cheap cluster is a SUBLEQ
-variant; more on that below.)
+code. The cheapest design that cannot is 6.7x larger than the cheapest design
+that can. Inside the cheap cluster everything sits within 25% of everything
+else, across a range from three operations to fourteen — so which side of the
+boundary a machine lands on has nothing to do with how many instructions it has.
+(The top of that cluster is a SUBLEQ variant; more on it below.)
 
 Here is the mechanism. None of these machines can express "element *i* of the
 array" in an instruction, because the address field is a constant baked into the
@@ -98,19 +106,30 @@ What justifies it is that the second version never writes to a program word. The
 program becomes read-only, and read-only storage is a completely different
 circuit: a ROM word is a few gates of decode-and-OR that logic synthesis shares
 across hundreds of words. Measured, that is 4.3 gates per word against 196 for
-RAM — a ratio of 46x.
+RAM — about 46x in this model.
 
-So 210 gates bought a 42,399-gate saving, by making the program eligible for
-ROM. The index register is not an optimisation. It is a permission.
+The controlled version of the comparison is this. The same ten-instruction
+machine, running the same program, costs **47,295 gates with its program in
+writable RAM and 7,078 with it in ROM**. The 210 gates of index register are the
+only reason the second column is available at all. They do not save 40,217
+gates; they make 40,217 gates saveable. The index register is not an
+optimisation. It is a permission.
+
+It also retires the break-even rule from two sections ago. Once the program is
+in ROM a word costs 4.3 gates, so an instruction would have to remove
+forty-seven words to justify 200 gates of decode. Nothing in a sane instruction
+set does that, which is exactly why the cheap cluster is so flat: past the
+boundary, instruction count stops mattering much.
 
 Two caveats, because that 46x ratio is doing all the work. It is partly a
-property of the memory model: real SRAM is about six transistors per bit rather
-than six gates, which would shrink the memory term by roughly an order of
-magnitude and narrow the gap considerably. It would not invert it — mask ROM is
-about one transistor per bit — but don't carry 46x into a world with real memory
-macros. And the split depends on the workload: my suite sorts a 16-word array,
-so indexing is on the critical path. A program that never touches an array, or
-one you are happy to let rewrite itself, would move the boundary or erase it.
+property of the memory model: real SRAM is roughly six transistors per bit
+rather than six gates, and mask ROM roughly one, so with real memory macros the
+gap narrows substantially — though it does not invert. Those two figures are
+technology rules of thumb, not outputs of this synthesis flow, and the 46x
+should not be carried out of this model. The split also depends on the workload:
+my suite sorts a 16-word array, so indexing is on the critical path. A program
+that never touches an array, or one you are happy to let rewrite itself, would
+move the boundary or erase it.
 
 ## The design that won
 
@@ -121,28 +140,32 @@ three-state FSM, and the next fetch overlapped onto the last cycle of the
 current instruction, so nothing costs more than two cycles.
 
 Total: 7,078 gates, of which 4,597 is the benchmark's own working set in RAM,
-1,509 is the CPU, and 912 is the entire program in ROM.
+1,509 is the processor and its output port, and 912 is the entire program in
+ROM.
 
-It resembles a stripped-down PDP-8. That is not a coincidence; it is what the
-constraints produce.
+The result looks a lot like a stripped-down PDP-8: accumulator, memory operands,
+conditional branches, indexed addressing.
 
 ## What one instruction actually costs
 
-I also built Jones's Ultimate RISC, whose only instruction is `MOVE src,dst`,
-with the ALU and program counter mapped to memory addresses. It landed within
-3.5% of the ten-instruction machine — which looks like a striking win for
-minimalism until you notice that its destination address field selects among ten
-behaviours. That is an opcode field wearing a disguise, and its core measured
-larger, not smaller, because removing the opcode relocates the decoding rather
-than eliminating it.
+I also built Jones's Ultimate RISC, a 1988 design whose sole instruction is
+`MOVE src,dst`, with the ALU and program counter mapped to memory addresses. It
+landed within 3.5% of the ten-instruction machine — which looks like a striking
+win for minimalism until you notice that its destination address field selects
+among ten behaviours. That is an opcode field wearing a disguise, and its core
+measured larger, not smaller, because removing the opcode relocates the decoding
+rather than eliminating it.
 
-The fair test was to give SUBLEQ the same privilege: two addresses wired to
-hardware, an index register and an indirect port. Still one instruction. It went
-from 164,783 gates to 8,848 — an 18.6x improvement — landing squarely in the
-cheap cluster.
+The fair comparison was to give SUBLEQ the same hardware facilities: two
+addresses wired to hardware, an index register and an indirect port. Still one
+instruction. It went from 164,783 gates to 8,848 — an 18.6x improvement —
+landing squarely in the cheap cluster.
 
-SUBLEQ's famous inefficiency was never really about having one instruction. It
-was about having no way to touch an array.
+In this experiment, then, SUBLEQ's large area penalty was driven far more by
+addressing than by having one instruction. It still loses on time — three words
+per instruction, no native compare and no native add are properties of the
+instruction that no amount of wiring fixes — but the area gap was never really
+about the instruction count.
 
 The compact version of all of it: a computer built from gates is mostly memory,
 memory you have to be able to write costs far more per word than memory you
@@ -151,7 +174,9 @@ deciding which kind your program is allowed to live in.
 
 ---
 
-*All figures are measured, not estimated. The RTL, the benchmark suite, the
-synthesis scripts and a Makefile that reproduces every number are in this
-repository; see [DESIGN.md](DESIGN.md) for the winning machine and
-[project.md](project.md) for the full method.*
+*All gate counts and cycle counts here are measured, not estimated: the RTL, the
+benchmark suite, the synthesis scripts and a Makefile that reproduces every
+number are in this repository. The transistor-per-bit comparisons in the caveats
+are technology rules of thumb rather than outputs of this flow. See
+[DESIGN.md](DESIGN.md) for the winning machine and [project.md](project.md) for
+the full method.*
