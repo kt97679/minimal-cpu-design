@@ -348,7 +348,7 @@ hardwired FSM             0      0    884         0     884     150
 ```
 
 The minimum is at 8 instructions. The 12-instruction variant is the control: its
-four logic instructions are never executed by the program, so it adds 215 gates
+four logic instructions are never executed by the program, so it adds 216 gates
 of ALU and decode and saves nothing. That gives the break-even rule directly —
 an instruction is worth adding only if it removes at least one word of program
 per ~196 gates it costs.
@@ -840,3 +840,48 @@ article is now the public face of the work.
   ROM at 4.3 gates each" so the juxtaposition cannot confuse.
 
 Russian translation updated to match, change for change.
+
+### 43. Prose pass, and a silently failed edit
+
+Second review pass on the article, this time for prose rather than claims.
+Found something worse than a prose problem first.
+
+**The most important fix from session 42 had never been applied to the English
+article.** The search-and-replace for the index-register paragraph used a source
+string containing `**bold**` markers that the file did not have, so it matched
+nothing and did nothing — silently. The Russian translation used a different
+source string, which did match, so for one commit the two languages disagreed on
+the single most contested claim in the piece: the SRAM qualification existed in
+Russian and not in English.
+
+Caught by reading the file instead of trusting the earlier `grep` count, which
+had been satisfied by unrelated occurrences of the same words. Lesson recorded:
+a replace that reports no error is not a replace that happened; verify by
+reading the changed region, not by counting keywords.
+
+Both articles have been rewritten from scratch rather than patched further, so
+their structure now matches section for section.
+
+**Prose changes:**
+
+* Dangling modifier: "Sweeping instruction sets over a suite, the total gate
+  count falls" — the sweeping does not fall. Now imperative: "Sweep ... and the
+  total gate count falls".
+* Moved the workload-generality caveat out from between the cluster claim and
+  its explanation, where it interrupted the argument, down to sit beside the
+  memory-model caveat after the payoff. Both caveats now land together, after
+  the reader has the result.
+* "I set out to check the hardware claim by building it" — "it" referred to a
+  claim, which cannot be built. Rewritten.
+* "A footnote on OISCs" undersold the section that contains the sharpest result
+  in the piece; retitled "What one instruction actually costs".
+* Removed the duplicated 7x (stated once before the table and once after),
+  tightened the ragged line wrapping left by the earlier patches, and trimmed
+  the closing sentence, which the previous revision had made accurate but flat.
+
+**Figure correction:** both articles said the four unused logic instructions
+cost 203 gates; the measured delta is 202 (1,711 - 1,509). `project.md` also
+carried 215 for the phase 2 equivalent, where the measurement is 216. Both
+corrected everywhere they appeared. Neither changes any argument, but a wrong
+number in the one document outsiders will read is worse than a wrong number
+anywhere else in the repository.

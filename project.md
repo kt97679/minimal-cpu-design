@@ -244,7 +244,7 @@ corrected ones; no conclusion changed.)*
 
 Going 1 -> 4 -> 6 -> 8 instructions cuts total gates by 2.8x, because each added
 instruction removes program words, and a word costs ~196 gates while an added
-opcode costs ~100-200. Going 8 -> 12 adds 215 gates of ALU and decode and saves
+opcode costs ~100-200. Going 8 -> 12 adds 216 gates of ALU and decode and saves
 **zero** words, because the program never uses AND/OR/XOR/SHR. That is the
 turning point, and the rule behind it is sharp: an instruction pays for itself
 only if it removes at least one word of program per ~196 gates it adds.
@@ -381,7 +381,7 @@ with zero output mismatches.
 
 **The minimum is at 10 instructions**, and it is not close: 4.8x better than the
 7-instruction machine on area x time, and 67x better than SUBLEQ. The curve turns
-up at 14, where four unused instructions add 203 gates and save nothing.
+up at 14, where four unused instructions add 202 gates and save nothing.
 
 ## Why the index register is worth far more than its 148 gates
 
@@ -458,7 +458,7 @@ Ranked by how much each decision is worth:
 2. **Get an index register, so code can live in ROM** — 4.3x.
 3. **Have ADD and JMP rather than synthesising them** — 1.6x on area x time.
 4. **Don't add instructions the workload never executes** — the 14-op variant
-   pays 203 gates for nothing.
+   pays 202 gates for nothing.
 5. **Core microarchitecture** — 13% of the final budget, and the only term left
    once the others are done.
 
