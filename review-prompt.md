@@ -60,19 +60,26 @@ article itself.
   memory.
 
 THE LOAD-BEARING CLAIMS — attack each one specifically
-1. A 16-bit word of gate-built RAM costs ~196 NAND-equivalents, making the CPU
-   core ~3% of the machine.
-2. Total gate count as a function of instruction-set size has a minimum at ten
-   instructions and rises after it.
-3. The break-even rule: an instruction pays for itself if it removes at least
-   one word of program per 196 gates it costs.
-4. The design space splits into two clusters separated by 7x, and the boundary
-   is whether the machine can index an array without self-modifying code.
-5. An index register costs 210 gates and buys a 42,399-gate saving — not by
-   shortening code (12 words, ~50 gates) but by making the program read-only,
-   where a word costs 4.3 gates instead of 196.
-6. SUBLEQ's inefficiency is about addressing, not about having one instruction;
-   given two memory-mapped ports it drops from 164,783 gates to 8,848.
+These are paraphrases for your convenience. Where a paraphrase and the article
+disagree, the article governs: quote the article, not this list.
+
+1. Under a gate-built memory model, a 16-bit word of writable RAM costs ~196
+   NAND-equivalents, which makes the processor a small fraction of the machine
+   (3% of the first design, 21% of the last).
+2. While the program must live in writable RAM, an instruction pays for itself
+   if it removes at least one word of program per 196 gates it costs — and this
+   rule stops applying once the program can live in ROM.
+3. Total gate count over instruction-set size has a minimum at ten instructions
+   among the sets measured, and rises after it.
+4. The measured designs fall into two clusters. The cheapest design that cannot
+   index without self-modifying code is 6.7x larger than the cheapest design
+   that can; inside the cheap cluster everything is within 25%.
+5. The same ten-instruction machine running the same program costs 47,295 gates
+   with its code in RAM and 7,078 with it in ROM. The index register's 210 gates
+   do not save 40,217 gates; they make 40,217 gates saveable.
+6. SUBLEQ's area penalty in this experiment is driven far more by addressing
+   than by instruction count: given two memory-mapped ports it drops from
+   164,783 gates to 8,848.
 
 For each: does the stated evidence actually support it? Is it stated more
 strongly than the evidence allows? Would a hostile expert have an obvious
@@ -112,3 +119,16 @@ ARTICLE FOLLOWS
 ---
 [paste the full text of ARTICLE.md here]
 ```
+
+---
+
+## Note on keeping this prompt current
+
+The claims list above is a paraphrase of the article, and it has drifted once
+already: a reviewer given a stale version spent three of its findings attacking
+wording that had been fixed two commits earlier, and proposing fixes the article
+had already adopted. That is the prompt's fault, not the reviewer's.
+
+If `ARTICLE.md` changes materially, update the claims list in the same commit,
+and keep the line telling the reviewer that the article governs where the two
+disagree.

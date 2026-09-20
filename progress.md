@@ -941,3 +941,56 @@ sideshow — but adopted the substance of the point by scoping the break-even ru
 on first use and signposting forward to where it gets retired. The logical
 inversion the reviewer identified was real; the fix did not require the
 restructure.
+
+### 45. Third review: half of it hit a stale prompt
+
+A third review came back "publishable after specific fixes" with three serious
+problems listed. Checking the quoted text against the files:
+
+```
+"An index register costs 210 gates and buys a 42,399-gate saving"  -> 0 hits in ARTICLE.md, 1 in review-prompt.md
+"The design space splits into two clusters separated by 7x"        -> 0 hits in ARTICLE.md, 1 in review-prompt.md
+"making the CPU core ~3% of the machine"                           -> 0 hits in either; paraphrase of prompt claim 1
+```
+
+All three of the headline problems quote the **claims list in
+`review-prompt.md`**, not the article — and that list still described the
+article as it stood two commits earlier, before the second review's fixes. The
+reviewer duly attacked "42,399-gate saving" and recommended replacing it with
+the controlled RAM-versus-ROM comparison, which the article had already adopted.
+Same for the unconditional break-even rule and the 3% framing.
+
+This is a defect in my prompt, not in the review. A summary of an artefact that
+lives beside the artefact will drift, and a reviewer reading both will trust the
+summary. Fixed by regenerating the claims list from the current text, adding a
+line stating that the article governs where the two disagree, and appending a
+note to the prompt requiring the list to be updated in the same commit as any
+material article change. Also added a check that every figure quoted in the
+prompt still appears in the article.
+
+**What was genuinely new and has been applied:**
+
+* The 6.7x figure now carries "under the gate-built memory model used
+  throughout" adjacent to the table, with a forward pointer to the caveats,
+  rather than relying on a qualification forty lines later.
+* Added an honest paragraph about the shape of the argument: once you grant that
+  every written word must be full-price RAM, a self-modifying machine is
+  expensive almost by construction. The model makes it true *that* it costs; the
+  measurement establishes *how much*. The reviewer's "this is a property of your
+  memory model, not of indexing" is close to fair, and saying so outright is
+  better than letting a reader find it.
+* The 196 figure now points at `synth/gates_ram.sh` so it can be reproduced
+  rather than taken on trust.
+* The twelve saved words are broken down: ten across the suite's five
+  indexed-access sites, plus two constant words the self-modifying version needs
+  as instruction templates. Verified against the assembler (a7: 210 code + 14
+  constants; a10: 200 + 12).
+* Opening says "smaller" in what — fewer gates in total, memory included.
+* "An opcode field wearing a disguise" became "functionally an opcode field".
+  Not for the reviewer's stated reason (smugness) but a better one: the original
+  implies Jones was concealing something, and a 1988 design that never claimed
+  area minimality deserves better.
+
+**Not applied:** the suggestion to give both the 3% and 21% figures up front and
+to condition the exchange rate on writable memory — both were already done in
+the previous revision, which is exactly the drift described above.
