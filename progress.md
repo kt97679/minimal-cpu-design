@@ -1357,3 +1357,44 @@ Still not randomised: the skeleton. One accumulator, memory operands, 16-bit
 word, 4-bit opcode field, three-state FSM, and the two array-access strategies.
 That is the next thing to put in the search, and until it is, this is a search
 of an instruction space inside an architecture I chose.
+
+### 56. Prompt library extracted from the postmortem
+
+Asked to capture the reusable lessons, particularly the two interventions that
+came from outside the review cycle and changed the work rather than the prose:
+reader feedback on structure, and the charge that the candidate set was
+recall rather than search.
+
+Wrote `prompts/`, six prompts plus an index. Each names the specific failure in
+this project that produced it, so a future reader can check whether the failure
+mode applies before spending a turn on it:
+
+* `01-problem-framing` — find the dominant term before optimising, and check
+  whether the benchmark admits a degenerate answer. From phase 1 (the processor
+  was 3% of the machine) and phase 2 (the true optimum was a hardwired FSM).
+* `02-escape-recall` — enumerate the space mechanically, audit the enumeration
+  for completeness, include candidates chosen because nobody uses them, sample
+  uniformly before optimising locally, and state what is still fixed. From the
+  bias objection, including that my "mechanical" pool was missing one of seven
+  branch conditions and that the winning design came from the primitives added
+  deliberately because no real machine had them.
+* `03-audit-tooling` — never mix modelled and measured figures, calibrate on a
+  known case, check which candidate each approximation favours, audit the
+  confirming result harder, treat exact agreement as a bug signal, verify edits
+  by reading, decompose before diagnosing. From the flatten bug, the average-
+  versus-marginal cost model, the unused-scratch handicap, and the wrong
+  diagnosis I published in three documents.
+* `04-expert-review` — the generalised version of `review-prompt.md`, with the
+  stale-claims-list failure built into it as an explicit rule.
+* `05-reader-review` — what five expert rounds never asked: where did you stop
+  reading, what is this investigating, is the comparison set just the famous
+  ones. From the reader feedback that produced the restructure and, in the same
+  four lines, the observation that became phase 7.
+* `06-handling-review` — check the quotes exist, verify before accepting,
+  separate errors from overclaims from judgement calls, look for the adjacent
+  defect, propagate in the same commit, record dispositions. From the round
+  wasted on a stale summary, the finding refuted by arithmetic, and the valid
+  criticism I rejected once and accepted two rounds later.
+
+The index says plainly that if only two are used, they should be `02` and `05`,
+since those are the two that changed the work rather than its presentation.

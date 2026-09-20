@@ -198,6 +198,11 @@ was about having no way to touch an array.
 * **[ARTICLE.md](ARTICLE.md)** — short write-up of the whole investigation and
   what it found ([русский перевод](ARTICLE.ru.md)). A prompt for getting it
   critically reviewed is in [review-prompt.md](review-prompt.md).
+* **[prompts/](prompts/README.md)** — six reusable prompts extracted from this
+  project's postmortem, each grounded in a specific failure that happened here:
+  problem framing and degeneracy checks, escaping recall-driven candidate
+  selection, auditing your own measurement tooling, expert review, reader
+  review, and handling the feedback that comes back.
 * **[DESIGN.md](DESIGN.md)** — reference description of the best hand-designed
   machine (beaten on gates by the phase 7 search, and still the faster of the
   two): the

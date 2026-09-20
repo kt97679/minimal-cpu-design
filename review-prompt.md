@@ -1,5 +1,10 @@
 # Review prompt for ARTICLE.md
 
+*(This is the project-specific instance. The generalised, reusable version is
+[prompts/04-expert-review.md](prompts/04-expert-review.md), along with five
+other prompts extracted from this project's postmortem — see
+[prompts/README.md](prompts/README.md).)*
+
 A prompt for asking a different model (or a human reviewer) to critique
 [ARTICLE.md](ARTICLE.md). It is written to draw out real objections rather than
 praise: it front-loads the method so the reviewer can judge whether the
