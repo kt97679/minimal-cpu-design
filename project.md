@@ -962,39 +962,58 @@ third row is the phase 4 winner plus `SUB_X`, at 6,845 against the model's 6,846
 for the phase 4 set itself. Independent confirmation that the hand design was
 not wrong.
 
-**But it is not the optimum, and the way it loses is the bias the objection
-predicted.** The best set found is eight instructions with **no ADD and no
-JMP** — every historical accumulator machine has both, and I never questioned
-including them. In the ROM regime they do not pay for themselves:
+**And it proposed a machine I would not have.** The best set found by the model
+is eight instructions with **no ADD and no JMP** — every historical accumulator
+machine has both, and I never questioned including them. By the search's own
+cost model that set is 1.1% smaller than the hand design.
 
-* `ADD_D` costs about 149 gates of core. Dropping it makes `add` six words
-  instead of three; across eight call sites that is 24 extra words of ROM at 4.3
-  gates each, 103 gates. Net saving: 46 gates.
-* `JMP` costs about 66 gates. Dropping it makes `jmp` two words instead of one;
-  ten sites, 43 gates of ROM. Net saving: 23 gates.
+## Measured, the search's winner loses
 
-Predicted total 69 gates; measured difference 74. This is the article's own
-break-even rule, applied in the regime where a program word costs 4.3 gates
-rather than 196 — and I did not apply it. The article says instruction count
-"stops mattering much" past the boundary. The search shows something sharper:
-past the boundary you should be *removing* instructions, and the two I kept are
-exactly the two that every real accumulator machine has.
+The modelled figure is not comparable with the measured ones, so the winner was
+compiled for real: `sw/emit.py` assembles the benchmark for an arbitrary
+searched instruction set, checks that it emits the correct 123 values, and
+synthesises the result exactly as phases 1-6 did.
 
-## On the objective
+| | search winner | phase 4 winner |
+|---|---:|---:|
+| CPU core, synthesised | 1,113 | 1,335 |
+| output port register | 174 | 174 |
+| memory subsystem, synthesised | 6,032 | 5,569 |
+| **total, like for like** | **7,319** | **7,078** |
+| program words | 273 | 235 |
+| cycles | 13,172 | 10,333 |
 
-The winner is 1.1% smaller and 27% slower. On gates alone, which is what this
-project set out to minimise, it wins. On gates x time the hand design wins,
-89.3M against 70.8M. Which answer is correct depends on the objective, and the
-honest statement is that the stated objective picks the search's machine.
+**Measured, it is 3.4% larger and 27% slower**, where the model had predicted
+1.1% smaller. The hand-designed machine remains the best measured design.
 
-## Verification
+The reason is a flaw in my own search model, and it is one the article already
+warned about. The model priced program words at 4.3 gates, the *average* over
+the ROM image. The eight-instruction machine needs 38 more words, and their
+*marginal* cost is 12.2 gates each — nearly three times the average. Dropping
+ADD and JMP saves 222 gates of core and costs 463 gates of memory: a net loss of
+241, where the model predicted a gain of 75.
 
-The winner was checked end-to-end rather than trusted from the model: its
-Verilog was generated, a program exercising all eight opcodes and both branch
-outcomes was assembled against it, and the result was compared between a
-reference emulator and Icarus Verilog running the generated RTL. They agree
-exactly, including the double-subtract addition, the indexed load and store, and
-the branches that must not be taken.
+"The marginal word is not the average word" is a caveat in the article. My search
+model ignored it, and the ranking it produced was wrong because of it.
+
+## What the search was worth anyway
+
+Three things, none of which required the winner to win:
+
+* it independently reproduced every macro expansion I had written by hand;
+* it rediscovered the two-group boundary without being told it exists;
+* it found the hand-designed machine as a local optimum, then attacked it with a
+  genuinely different candidate that measurement refuted.
+
+The hand design now survives a search that tried to beat it, rather than
+surviving because I chose it. That is a materially stronger position than before,
+and it is not the outcome I expected when I started writing the search.
+
+Also verified: the generated hardware itself. A program exercising all eight
+opcodes and both branch outcomes was assembled against the generated Verilog and
+compared between a reference emulator and Icarus Verilog. They agree exactly,
+including the double-subtract addition, the indexed load and store, and the
+branches that must not fire.
 
 ## What is still biased, stated plainly
 

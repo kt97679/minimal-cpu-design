@@ -147,12 +147,19 @@ breadth-first search rather than hand-written macros, and the Verilog is emitted
 from the instruction list and synthesised for real.
 
 It reproduces the hand-written macro expansions exactly, rediscovers the
-two-group split without being told it exists, finds the hand-designed machine as
-a local optimum — and then beats it. The cheapest set has **eight** instructions
-and **no ADD and no JMP**, which every historical accumulator machine has and
-which I never questioned. In the ROM regime they do not pay for themselves: 6,771
-gates against 6,845, predicted to within 5 gates by this project's own break-even
-rule, which I had failed to apply in that regime.
+two-group split without being told it exists, and finds the hand-designed
+machine as a local optimum. It then proposed a machine I would not have: eight
+instructions with **no ADD and no JMP**, which the search's cost model made 1.1%
+smaller.
+
+Compiled and synthesised for real, that machine is **3.4% larger** (7,319 gates
+against 7,078) and 27% slower. The model had priced program words at the 4.3
+gates/word ROM *average*; the 38 extra words the eight-instruction machine needs
+actually cost 12.2 gates each. "The marginal word is not the average word" is a
+caveat in the article — and my search model ignored it.
+
+So the hand design survives, but it now survives a search that tried to beat it
+and was refuted by measurement, rather than surviving because I chose it.
 
 What remains biased is stated in `project.md`: the skeleton, the two
 array-access strategies, the benchmark, and the fact that twelve restarts is

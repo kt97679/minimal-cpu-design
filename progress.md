@@ -1242,3 +1242,50 @@ over C(31, <=16) subsets is sampling, not exhaustion.
 The work has moved from "I compared four machines I already knew" to "I searched
 a mechanically enumerated instruction space inside an architecture I chose".
 That is a real improvement and a partial answer, and the write-up says so.
+
+### 54. The search's winner does not survive measurement
+
+Asked whether the optimum is now 6,771 gates. It is not, and the question was
+the right one to ask: 6,771 was a *modelled* figure and 7,078 is a *measured*
+one, so putting them side by side would have been the same apples-to-oranges
+error two reviewers already caught. The article had been updated with the
+modelled number, which was wrong of me.
+
+Built `sw/emit.py` to close the gap: it assembles the benchmark for an arbitrary
+searched instruction set, verifies the 123 outputs, and synthesises the ROM,
+data RAM and core exactly as phases 1-6 did.
+
+Measured, like for like (the generated CPU has no output port, so 174 gates are
+added to match `comp_acc`):
+
+```
+                          search winner   phase 4 winner
+CPU core, synthesised              1113             1335
+output port register                174              174
+memory, synthesised                6032             5569
+TOTAL                              7319             7078
+program words                       273              235
+cycles                            13172            10333
+```
+
+**3.4% larger and 27% slower**, where the model had said 1.1% smaller. The hand
+design remains the best measured machine at 7,078.
+
+The cause is a flaw in my search's cost model that the article itself warns
+about. It priced program words at 4.3 gates, the *average* over the ROM image.
+The eight-instruction machine needs 38 more words, and their *marginal* cost is
+12.2 gates each. Dropping ADD and JMP saves 222 gates of core and costs 463 of
+memory: net loss 241, where the model predicted a gain of 75. "The marginal word
+is not the average word" is a caveat I wrote and then ignored one section later
+in my own tooling.
+
+Two smaller emitter bugs found while doing this: it allocated a constant word
+for both `+imm` and `-imm` at every immediate whether referenced or not (24
+constants instead of 13), and the sizing pass indexed the symbol table before it
+existed.
+
+Corrected in `project.md`, `README.md` and chapter 6 of both articles. The
+honest version is better than the one it replaces: the hand design now survives
+a search that tried to beat it and was refuted by measurement, instead of
+surviving because I picked it. That is a stronger answer to the bias objection
+than "the search agreed with me" would have been.
