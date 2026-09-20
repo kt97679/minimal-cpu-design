@@ -223,7 +223,11 @@ rules of thumb, not outputs of this flow.
 critical path. A program that never touches an array, or one you are happy to
 let rewrite itself, would move the boundary or erase it.
 
-## 4. The machine that won
+## 4. The best machine I designed
+
+This is the machine I arrived at by hand, and the one the repository documents
+in detail. Chapter 6 describes a smaller one, found by searching rather than by
+designing, which beats it by 2.8%.
 
 ### The instruction set
 
@@ -246,9 +250,10 @@ more than two cycles.
 
 ### Ancestors
 
-The result looks a lot like a stripped-down PDP-8, which is not surprising.
-What is more interesting is how many of these findings were already
-load-bearing in machines built when gates were genuinely expensive.
+The result looks a lot like a stripped-down PDP-8 — which, given that I
+designed it by hand, is exactly the problem chapter 6 is about. What is more
+interesting is how many of these findings were already load-bearing in machines
+built when gates were genuinely expensive.
 
 The **6502** gives its first 256 bytes a shorter addressing mode: `LDA $12` is
 two bytes and three cycles where `LDA $0012` is three and four. That is the

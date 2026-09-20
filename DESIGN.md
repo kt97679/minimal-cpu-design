@@ -1,9 +1,16 @@
-# The optimal design
+# The best hand-designed machine
 
-The machine that came out cheapest across five phases of measurement: a
+The machine that came out cheapest across five phases of hand design: a
 ten-instruction accumulator machine with an index register, at **7,078
 NAND-equivalent gates**, running the five-program benchmark suite in 10,333
 cycles.
+
+Phase 7 then searched the instruction space mechanically and found a smaller
+one — built on reverse subtract, with no ADD, no SUB and no JMP, at 6,959 gates
+against this machine's 7,161 when both are compiled by the same automatic
+pipeline. See the phase 7 section of `project.md`. This document describes the
+hand design, which is still the fastest of the two and the one whose RTL is in
+`rtl/cpu_acc.v`.
 
 Everything below is measured, not estimated. `make phase4` reproduces it.
 

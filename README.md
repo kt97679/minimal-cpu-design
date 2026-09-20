@@ -72,8 +72,10 @@ provably runs the same algorithm.
 | + LDI ADDI | 12 | 227 | 1691 | 45927 | 8019 | 7325 | 9814 | **71.9** |
 | + AND OR XOR SHR | 14 | 235 | 1711 | 47497 | 9546 | 7280 | 10333 | 75.2 |
 
-**Ten instructions wins** — 4.8x better than seven on area x time, 67x better
-than SUBLEQ, with the curve turning up at 14.
+**Ten instructions wins** among the hand-designed ladder — 4.8x better than
+seven on area x time, 67x better than SUBLEQ, with the curve turning up at 14.
+(Phase 7's search later beat it on gates with a machine built on reverse
+subtract; see below.)
 
 The index register is the reason, and not for the obvious reason. It costs
 ~200 gates and saves only 12 words of program. What it actually does is remove the
@@ -196,7 +198,9 @@ was about having no way to touch an array.
 * **[ARTICLE.md](ARTICLE.md)** — short write-up of the whole investigation and
   what it found ([русский перевод](ARTICLE.ru.md)). A prompt for getting it
   critically reviewed is in [review-prompt.md](review-prompt.md).
-* **[DESIGN.md](DESIGN.md)** — reference description of the winning design: the
+* **[DESIGN.md](DESIGN.md)** — reference description of the best hand-designed
+  machine (beaten on gates by the phase 7 search, and still the faster of the
+  two): the
   ten instructions and their encoding, the microarchitecture, the memory map,
   the full gate budget, and why the index register is worth roughly 200x what it
   costs.

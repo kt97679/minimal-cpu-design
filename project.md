@@ -452,7 +452,9 @@ the benchmark, and a machine with a carry or overflow flag would not need it.
 ## Conclusion across all three phases
 
 For building a small computer out of gates and running a realistic mixed
-workload, the answer is an **accumulator machine with about ten instructions**:
+workload, the best design reached by hand is an **accumulator machine with about
+ten instructions**: (phase 7's mechanical search later found a smaller one, built
+on reverse subtract with no ADD, SUB or JMP -- see that section)
 load, store, add, subtract, branch-on-zero, branch-on-sign, unconditional jump,
 and an index register with indexed load and store.
 
