@@ -45,6 +45,10 @@ S = lambda v: v - 0x10000 if v & 0x8000 else v
 # Built as cross products. `mode`: D = direct, I = immediate, X = indexed.
 ALU = {
     'LD':  lambda a, m: m,
+    # RSB and NAND are in the pool precisely because no historical accumulator
+    # machine has them: the pool should not be a list of things that existed
+    'RSB': lambda a, m: (m - a) & MASK,
+    'NAND': lambda a, m: (~(a & m)) & MASK,
     'ADD': lambda a, m: (a + m) & MASK,
     'SUB': lambda a, m: (a - m) & MASK,
     'AND': lambda a, m: a & m,
@@ -55,6 +59,10 @@ ALU = {
 NEG, ZERO, POS = 'n', 'z', 'p'
 COND = {
     'JMP': frozenset({NEG, ZERO, POS}),
+    'JLE': frozenset({NEG, ZERO}),      # SUBLEQ's own condition -- omitted from
+                                        # the first pool, which claimed to be
+                                        # exhaustive and was not
+
     'JZ':  frozenset({ZERO}),
     'JN':  frozenset({NEG}),
     'JP':  frozenset({POS}),
@@ -333,11 +341,13 @@ def index_schemes(iset, T):
 
 # ------------------------------------------------------- hardware generation
 RTL_ALU = {'LD': 'mdin', 'ADD': 'acc + mdin', 'SUB': 'acc - mdin',
-           'AND': 'acc & mdin', 'OR': 'acc | mdin', 'XOR': 'acc ^ mdin'}
+           'AND': 'acc & mdin', 'OR': 'acc | mdin', 'XOR': 'acc ^ mdin',
+           'RSB': 'mdin - acc', 'NAND': '~(acc & mdin)'}
 RTL_ALU_I = {'LD': 'imm', 'ADD': 'acc + imm', 'SUB': 'acc - imm',
-             'AND': 'acc & imm', 'OR': 'acc | imm', 'XOR': 'acc ^ imm'}
+             'AND': 'acc & imm', 'OR': 'acc | imm', 'XOR': 'acc ^ imm',
+             'RSB': 'imm - acc', 'NAND': '~(acc & imm)'}
 RTL_COND = {'JZ': 'zf', 'JN': 'nf', 'JP': '(~nf & ~zf)', 'JNZ': '~zf',
-            'JNN': '~nf', 'JMP': "1'b1"}
+            'JNN': '~nf', 'JLE': '(nf | zf)', 'JMP': "1'b1"}
 
 
 def gen_rtl(iset, aw=8):

@@ -967,53 +967,76 @@ is eight instructions with **no ADD and no JMP** — every historical accumulato
 machine has both, and I never questioned including them. By the search's own
 cost model that set is 1.1% smaller than the hand design.
 
-## Measured, the search's winner loses
+## The pool was not as mechanical as claimed
 
-The modelled figure is not comparable with the measured ones, so the winner was
-compiled for real: `sw/emit.py` assembles the benchmark for an arbitrary
-searched instruction set, checks that it emits the correct 123 values, and
-synthesises the result exactly as phases 1-6 did.
+I wrote that the pool contained "a branch for every one of the six ways to test
+the outcome classes". There are seven, and the one I omitted was
+branch-if-not-positive — SUBLEQ's own condition. The arithmetic slots were
+filled with the operations real accumulator machines have. Both are exactly the
+pattern-narrowing the objection predicted.
 
-| | search winner | phase 4 winner |
-|---|---:|---:|
-| CPU core, synthesised | 1,113 | 1,335 |
-| output port register | 174 | 174 |
-| memory subsystem, synthesised | 6,032 | 5,569 |
-| **total, like for like** | **7,319** | **7,078** |
-| program words | 273 | 235 |
-| cycles | 13,172 | 10,333 |
+Corrected: the missing branch, plus two primitives no accumulator machine used —
+reverse subtract (`acc = m - acc`) and NAND, in all three addressing modes. Pool
+of 38.
 
-**Measured, it is 3.4% larger and 27% slower**, where the model had predicted
-1.1% smaller. The hand-designed machine remains the best measured design.
+## Uniform random sampling, no hill climbing
 
-The reason is a flaw in my own search model, and it is one the article already
-warned about. The model priced program words at 4.3 gates, the *average* over
-the ROM image. The eight-instruction machine needs 38 more words, and their
-*marginal* cost is 12.2 gates each — nearly three times the average. Dropping
-ADD and JMP saves 222 gates of core and costs 463 gates of memory: a net loss of
-241, where the model predicted a gain of 75.
+About 8,800 draws of a uniformly random size and a uniformly random subset; 129
+of them can run the benchmark. They fall into the same two groups as phase 3,
+now by random draw rather than by my choice:
 
-"The marginal word is not the average word" is a caveat in the article. My search
-model ignored it, and the ranking it produced was wrong because of it.
+| | modelled gates | count |
+|---|---|---:|
+| index-register machines | 7,505 – 7,900 | 4 |
+| self-patching machines | 50,755 – 87,715 | 125 |
 
-## What the search was worth anyway
+Nothing landed between. Reverse subtract appears in all four of the best random
+machines, which is what prompted the local search to be re-run over the larger
+pool.
 
-Three things, none of which required the winner to win:
+## Measured: the search wins
 
-* it independently reproduced every macro expansion I had written by hand;
-* it rediscovered the two-group boundary without being told it exists;
-* it found the hand-designed machine as a local optimum, then attacked it with a
-  genuinely different candidate that measurement refuted.
+Two errors in my own tooling had to be fixed first, and both flattered the
+answer I already had.
 
-The hand design now survives a search that tried to beat it, rather than
-surviving because I chose it. That is a materially stronger position than before,
-and it is not the outcome I expected when I started writing the search.
+* The search's cost model priced program words at the ROM *average* of 4.3
+  gates. The marginal ROM word is about 1.8 gates and a data word about 200, so
+  the model mis-ranked candidates whose programs were longer.
+* The emitter allocated a scratch variable that no generated code referenced — a
+  200-gate penalty applied only to searched machines, since the hand-written
+  assembly did not use it.
 
-Also verified: the generated hardware itself. A program exercising all eight
-opcodes and both branch outcomes was assembled against the generated Verilog and
-compared between a reference emulator and Icarus Verilog. They agree exactly,
-including the double-subtract addition, the indexed load and store, and the
-branches that must not fire.
+With both fixed and every machine compiled by the same automatic pipeline:
+
+| machine | gates | cycles | core | code words |
+|---|---:|---:|---:|---:|
+| phase 4 hand design | 7,161 | 10,332 | 1,508 | 200 |
+| 8 instructions, no ADD or JMP | 7,168 | 13,172 | 1,287 | 235 |
+| **RSB machine** | **6,959** | 11,656 | 1,332 | 219 |
+
+The winner is `JN JZ LDX_D LD_D LD_X RSB_D RSB_X ST_D ST_X XOR_D XOR_X`: **no
+ADD, no SUB, no JMP.** Reverse subtract does the work of both arithmetic
+instructions. The compiler emits `a + b` as `LD d; RSB Kz; RSB s; ST d` — load,
+negate against zero, reverse-subtract — and `a - b` in three instructions with no
+SUB in the machine. Unconditional jumps are `LD Kz; JZ`.
+
+2.8% smaller than the hand design through the same compiler, 1.7% smaller than
+the hand-assembled version of it (7,078), and 13% slower. ROM synthesis varies
+by about 50 gates with content, so the margin is real but modest — roughly two
+to four times the noise.
+
+The two XOR instructions in the winning set are never used by any template: the
+climb stopped at a local optimum with dead weight in it. Removing them gives
+6,966, which is inside the noise, so the trim neither helps nor hurts measurably.
+
+## The objection was right
+
+A machine built around reverse subtract, with no add, no subtract and no
+unconditional jump, resembles nothing in the historical record. It is smaller
+than the design I reached by recognising a PDP-8. The reader who said a model
+with the history of computer architecture in its weights would not search but
+recall was correct, and it took a mechanically enumerated pool — including two
+primitives chosen precisely because no real machine had them — to get past it.
 
 ## What is still biased, stated plainly
 

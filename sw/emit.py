@@ -28,7 +28,7 @@ def emit(iset, T, scheme):
     USED.clear()
     consts = []
     varnames = sorted({x for op in prog for x in op[1:]
-                       if isinstance(x, str) and x.startswith('v')}) + ['_t0', '_t1']
+                       if isinstance(x, str) and x.startswith('v')})
 
     sym, words = {}, []
     for _ in range(2):
@@ -39,12 +39,12 @@ def emit(iset, T, scheme):
                 continue
             words.extend(emit_op(op, T, scheme, OPC, sym, len(words)))
         ncode = len(words)
-        consts = sorted(USED)          # only what the emitted code referenced
+        consts = sorted(c for c in USED if c.startswith(('K', '#')))
         addr = ncode
         for c in consts:
             sym[c] = addr; addr += 1
         nro = addr
-        for v in varnames:
+        for v in varnames + sorted(c for c in USED if c.startswith('_')):
             sym[v] = addr; addr += 1
         sym['ARR'] = addr; addr += S.ARRN
         n = addr
@@ -72,6 +72,7 @@ def slot(name, op, sym, here):
     if name == 's':
         return g(op[-1], 0)
     if name in ('t0', 't1'):
+        USED.add('_' + name)           # only allocate scratch that is used
         return g('_' + name, 0)
     if name in ('port', 'Kz', 'K1'):
         if name != 'port':

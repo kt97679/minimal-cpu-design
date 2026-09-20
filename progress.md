@@ -1289,3 +1289,71 @@ honest version is better than the one it replaces: the hand design now survives
 a search that tried to beat it and was refuted by measurement, instead of
 surviving because I picked it. That is a stronger answer to the bias objection
 than "the search agreed with me" would have been.
+
+### 55. Not a truly random search — and what fixing that changed
+
+Pressed on whether the phase 7 search was really random, or whether it had
+patterns in it that narrowed the variants tried. It had, and finding them
+changed the result twice.
+
+**The pool was not mechanical.** I had written that it contained "a branch for
+every one of the six ways to test the outcome classes". There are seven. The one
+missing was branch-if-not-positive — SUBLEQ's own branch condition, absent from
+a pool built for a project about SUBLEQ. The arithmetic slots, meanwhile, held
+exactly the operations real accumulator machines have. Both are the
+pattern-narrowing the objection named.
+
+Corrected by adding the missing branch and two primitives chosen *because* no
+accumulator machine used them: reverse subtract (`acc = m - acc`) and NAND, in
+all three addressing modes. Pool of 38.
+
+**Uniform random sampling, no hill climbing at all.** 8,800 draws of a random
+size and a random subset, 129 feasible. The two-group split appears from random
+draw alone: index-register machines 7,505-7,900 modelled gates, self-patching
+50,755-87,715, nothing between. Reverse subtract turned up in all four of the
+best random machines, which is what sent me back to local search over the larger
+pool.
+
+**Two of my own tools were wrong, both in the direction of the answer I already
+had.** The cost model priced program words at the ROM *average* of 4.3 gates;
+decomposing the measurement properly shows the marginal ROM word is about 1.8
+gates and a data word about 200, so the model mis-ranked any candidate with a
+longer program. And the emitter allocated a scratch variable no generated code
+referenced — a 200-gate penalty applied only to searched machines, because the
+hand-written assembly never asked for it. My earlier diagnosis in entry 54, that
+the marginal ROM word costs 12.2 gates, was wrong: it lumped ROM and RAM
+together.
+
+So the sequence was: model says the search wins, measurement says it loses,
+finding my own handicap says it wins after all. Recorded in that order because
+the middle step was published.
+
+**Result.** Every machine compiled by the same pipeline:
+
+```
+phase 4 hand design              7161 gates  10332 cycles
+8 instructions, no ADD or JMP    7168        13172
+RSB machine                      6959        11656
+```
+
+Winner: `JN JZ LDX_D LD_D LD_X RSB_D RSB_X ST_D ST_X XOR_D XOR_X` — no ADD, no
+SUB, no JMP. `a + b` compiles to `LD d; RSB Kz; RSB s; ST d`; `a - b` needs three
+instructions with no SUB in the machine; unconditional jumps are `LD Kz; JZ`.
+2.8% below the hand design through the same compiler, 1.7% below its
+hand-assembled version, 13% slower. ROM synthesis varies ~50 gates with content,
+so the margin is two to four times the noise.
+
+The two XOR instructions in the winning set are dead — no template uses them.
+The climb stopped at a local optimum carrying weight it did not need. Trimming
+them gives 6,966, inside the noise.
+
+**The objection was right.** A machine built on reverse subtract, with no add,
+no subtract and no unconditional jump, resembles nothing in the historical
+record, and it is smaller than the design I reached by recognising a PDP-8. It
+took a pool containing two primitives chosen precisely because no real machine
+had them to find it.
+
+Still not randomised: the skeleton. One accumulator, memory operands, 16-bit
+word, 4-bit opcode field, three-state FSM, and the two array-access strategies.
+That is the next thing to put in the search, and until it is, this is a search
+of an instruction space inside an architecture I chose.
