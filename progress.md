@@ -793,3 +793,50 @@ The modelling choices most likely to be challenged are listed explicitly in the
 prompt rather than left for the reviewer to find: flip-flop RAM instead of SRAM,
 a small benchmark, and the 16-word array being a large share of the winning
 design's memory.
+
+### 42. External review of the article, and what was accepted
+
+Ran `review-prompt.md` against the article. The review came back "publishable
+after specific fixes". Recording the disposition of each point, since the
+article is now the public face of the work.
+
+**Accepted and fixed:**
+
+* *The 42,399-gate saving is an artefact of the flip-flop-RAM model.* Fair. The
+  46x ROM-to-RAM ratio is doing all the work and the article presented the
+  saving as a property of the index register. Added an explicit paragraph: the
+  claim is scoped to the gate-level memory model, real SRAM (~6 transistors per
+  bit rather than ~6 gates) would shrink the memory term by about an order of
+  magnitude, and mask ROM at ~1 transistor per bit means the gap narrows without
+  inverting. The direction survives any memory technology; the magnitude does
+  not.
+* *The two-cluster split is a property of this benchmark, not of the design
+  space.* Fair. Softened, and added a sentence naming the dependency: the suite
+  sorts a 16-word array, so indexing is on the critical path; a workload that
+  never touches an array would move or erase the boundary.
+* *"806 gates, three percent" is inconsistent with the later 1,241-1,509 gate
+  cores.* Not an error — 806 is the phase 1 four-instruction machine against a
+  27,406-gate design, and it is a flat module unaffected by the phase 4 counting
+  bug — but the article never said which machine, so it reads as inconsistent.
+  Attributed it, and added that the core is 21% in the final machine.
+* Straw-manning OISC advocates (most claim pedagogical interest, not area);
+  flip-flops normalised to 6 NANDs not stated in the body; "bottoms out at ten"
+  asserted beyond the measured points; break-even rule stated as
+  technology-independent; the augmented SUBLEQ sitting unremarked at the top of
+  the cheap cluster; "it is, roughly, a PDP-8"; the closing sentence
+  over-generalising the job of an instruction set. All fixed as suggested.
+
+**Rejected:**
+
+* *"A Harvard machine with a separate instruction ROM was always available."*
+  This is the one point that misreads the result. A self-modifying program
+  cannot live in ROM, so the Harvard split is not an alternative to the index
+  register — it is the thing the index register makes legal. The article already
+  says this; no change, though the qualification paragraph above now sits next
+  to it.
+* *"196 x 12 = 2,352, not ~50 gates."* The reviewer half-retracted this in the
+  same sentence. The twelve words saved are code, which lives in ROM at 4.3
+  gates each, so ~50 is right. Reworded to say "twelve words of program ... in
+  ROM at 4.3 gates each" so the juxtaposition cannot confuse.
+
+Russian translation updated to match, change for change.

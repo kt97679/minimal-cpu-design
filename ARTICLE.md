@@ -3,9 +3,9 @@
 There is a well-known toy in computer architecture called the one-instruction set
 computer. The most famous version is SUBLEQ: subtract one memory word from
 another, and branch if the result is not positive. That single operation is
-Turing-complete. You can compile C to it. People build them on FPGAs for fun, and
-the implicit claim is that minimality buys you something — a smaller machine,
-less hardware, a cleaner foundation.
+Turing-complete. You can compile C to it. People build them on FPGAs for fun.
+Most of the stated interest is pedagogical and theoretical, but alongside it runs
+an implicit hope: that minimality also buys a smaller machine.
 
 I set out to check the hardware claim by building it. Not by reasoning about it,
 but by writing the RTL, synthesising it down to 2-input NAND gates with Yosys,
@@ -17,10 +17,12 @@ question.
 
 The first measurement reframed everything. Building a computer out of gates means
 building its memory out of gates too, and a 16-bit word of gate-level RAM costs
-about 196 NAND-equivalents: sixteen flip-flops at six gates each, plus its own
-write decoder and its share of the read multiplexer.
+about 196 NAND-equivalents: sixteen flip-flops (each normalised to a six-NAND D
+type) plus its own write decoder and its share of the read multiplexer.
 
-The CPU core, by comparison, was 806 gates. Three percent of the machine.
+The CPU core of that first four-instruction machine, by comparison, was 806
+gates against 27,406 for the whole design. Three percent. Even in the much
+leaner machine this ends with, the core is only 21%.
 
 That gives you an exchange rate. One word of program is worth about a quarter of
 the entire CPU. Any instruction you add that removes even a handful of program
@@ -35,15 +37,17 @@ Sweeping instruction sets over a five-program benchmark suite (Fibonacci,
 insertion sort, shift-and-add multiply, Euclid's GCD, binary-to-decimal), the
 total gate count falls steeply as you add instructions and then turns back up.
 
-It bottoms out at ten. Below that you pay in program size: without `ADD`,
+Among the sets I measured it bottoms out at ten. Below that you pay in program
+size: without `ADD`,
 computing `a + b` takes six instructions instead of three. Without an
 unconditional jump, every `goto` costs two. Above ten, you pay in decode logic
 for instructions the workload never executes. Adding `AND`, `OR`, `XOR` and a
 shift cost 203 gates and saved exactly nothing, because the benchmark never used
 them.
 
-So there is a break-even rule, and it is concrete: an instruction is worth adding
-if it removes at least one word of program per 196 gates it costs. Most cheap
+So there is a break-even rule, and under this cost model it is concrete: an
+instruction is worth adding if it removes at least one word of program per 196
+gates it costs. Most cheap
 instructions clear that bar easily. Instructions that add new datapath usually do
 not, which matches what Sakamoto and Anderson found independently when they
 extended SUBLEQ: a second instruction reusing the existing subtractor cost 1.33x
@@ -53,16 +57,22 @@ cost 1.87x and 5.86x and ran slower in wall-clock terms.
 ## The finding that mattered
 
 The curve turned out to be a sideshow. Sorting every design I built by gate
-count, the field splits into two clusters with a 7x gap and nothing in between.
+count, they fall into two clusters with a 7x gap and nothing in between.
 
 | | gates | operations |
 |---|---|---|
 | cannot index without self-modifying code | 47,295 – 164,783 | 1–7 |
 | can index without self-modifying code | 7,078 – 8,848 | 3–14 |
 
-Inside a cluster, the instruction set is worth at most 25%. Between them it is
-worth 7x. And the boundary has nothing to do with how many instructions a machine
-has.
+The boundary coincides with whether the machine can index an array without
+modifying its own code. Inside a cluster the instruction set is worth at most
+25%; between them it is worth 7x, and which side a machine lands on has nothing
+to do with how many instructions it has. (The top of the cheap cluster is a
+SUBLEQ variant discussed at the end.)
+
+How general this is depends on the workload. My suite sorts a 16-word array, so
+indexing is on the critical path; a program that never touches an array, or one
+you are happy to let rewrite itself, would move the boundary or erase it.
 
 Here is the mechanism. None of these machines can express "element *i* of the
 array" in an instruction, because the address field is a constant baked into the
@@ -109,8 +119,8 @@ instruction so nothing costs more than two cycles.
 Total: 7,078 gates. Of which 4,597 is the benchmark's own working set in RAM,
 1,509 is the CPU, and 912 is the entire program in ROM.
 
-It is, roughly, a PDP-8. That is not a coincidence; it is what the constraints
-produce.
+It resembles a stripped-down PDP-8. That is not a coincidence; it is what the
+constraints produce.
 
 ## A footnote on OISCs
 
@@ -131,9 +141,9 @@ SUBLEQ's famous inefficiency was never really about having one instruction. It
 was about having no way to touch an array.
 
 The compact version of all of it: a computer built from gates is mostly memory,
-memory that must be writable costs about 46x more per word than memory that does
-not, and the instruction set's main job is to decide which kind your program
-needs.
+memory that must be writable costs far more per word than memory that does not,
+and under these constraints the instruction set's decisive job is to decide which
+kind of storage your program is allowed to live in.
 
 ---
 
