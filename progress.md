@@ -766,3 +766,15 @@ permission is used).
 All figures cross-checked against `build/phase4.json` and fresh synthesis runs
 before writing: core 1,335 plus 174 for the output port, 38 flip-flops, ROM 912
 gates for 212 words, data RAM 4,597 for 23 words, total 7,078.
+
+### 40. Article
+
+Added `ARTICLE.md`, a short write-up aimed at someone who has not read the
+repository: the gates-per-word exchange rate, where the instruction-count curve
+turns, and the two-cluster finding with the index register as the boundary.
+Added `ARTICLE.ru.md`, a Russian translation. Both linked from the README.
+
+Figures in the article are the same measured ones used in `DESIGN.md`: 196
+gates per RAM word against 4.3 per ROM word, the 210-gate index register buying
+a 42,399-gate saving, 7,078 gates total for the winning machine, and SUBLEQ
+going from 164,783 to 8,848 once given the same memory-mapped ports.
