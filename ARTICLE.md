@@ -6,56 +6,66 @@ another, and branch if the result is not positive. That single operation is
 Turing-complete. You can compile C to it. People build them on FPGAs for fun.
 
 A natural question is whether that minimality also buys a smaller machine —
-fewer gates in total, counting the memory as well as the processor.
+fewer gates in total, counting the memory as well as the processor. The answer
+is no, and the reason turns out to have almost nothing to do with instruction
+counts.
 
-I decided to find out by building both — not by reasoning about it, but by
-writing the RTL, synthesising down to 2-input NAND gates with Yosys, and
-running real programs in simulation. The contest was SUBLEQ against the
-smallest conventional machine I could construct: a four-instruction accumulator
-with load, store, subtract, and branch-if-zero.
+## What I measured, and how
 
-SUBLEQ lost, and lost heavily. But it lost for a reason I had not expected, and
-chasing that reason turned a two-way comparison into a search for the
-instruction set that costs the fewest gates outright. The short answer to the
-original question is that minimality does not buy you a smaller machine. The
-longer answer is that how many instructions you have matters far less than
-something else entirely.
+**The question.** For a computer built entirely from logic gates, which
+instruction set costs the fewest gates to run a realistic program?
 
-## The exchange rate
+**The cost model.** Everything is synthesised to 2-input NAND gates with Yosys
+and counted, including the memory: a gate-built RAM word is flip-flops plus its
+own write decoder and read multiplexer. Each flip-flop is normalised to a
+six-NAND D type. No figure below is estimated unless it says so.
+
+**The benchmark.** Five programs — Fibonacci, insertion sort of 16 words,
+shift-and-add multiply, Euclid's GCD, binary-to-decimal — written once in a
+small virtual instruction set and macro-expanded per machine, so every design
+provably runs the same algorithm on the same data. Every design was simulated
+against a golden model before a single gate was counted.
+
+**The designs.** It began as a two-way contest: SUBLEQ against the smallest
+conventional machine I could construct, a four-instruction accumulator with
+load, store, subtract and branch-if-zero. SUBLEQ lost heavily, but for a reason
+I had not expected, and chasing it widened the project into a sweep — five,
+seven, ten, twelve and fourteen operations, plus two more exotic one-instruction
+machines — all sharing one microarchitecture so the instruction set is the only
+variable.
+
+## 1. Memory is the machine
+
+### The exchange rate
 
 The first measurement reframed the question. Building a computer out of gates
-means building its memory out of gates too, and the synthesised gate-built RAM
-works out to about 196 NAND-equivalents per 16-bit word — that figure is from a
-136-word store, and it is synthesised rather than estimated;
-`synth/gates_ram.sh` in the repository produces it for any size. The breakdown
-is sixteen flip-flops (each normalised to a six-NAND D type), a write decoder,
-and a share of the read multiplexer.
+means building its memory out of gates too, and the synthesised RAM works out to
+about 196 NAND-equivalents per 16-bit word. (That is from a 136-word store;
+`synth/gates_ram.sh` reproduces it for any size.)
 
-The CPU core of that first four-instruction machine, by comparison, was 806
-gates against 27,406 for the whole design — three percent. That machine wrote
-its results into a 100-word array which I later replaced with an output port,
-precisely because the array was swamping everything else, so treat 3% as the
-extreme end of the range. In the much leaner machine this ends with, the
-processor logic plus its output port is 21%.
+The processor of that first four-instruction machine was 806 gates against
+27,406 for the whole design — three percent. That machine wrote its results into
+a 100-word array, which I later replaced with an output port precisely because
+the array was swamping everything else, so treat 3% as the extreme end of the
+range; in the leanest machine here the processor is 21%.
 
-Either way you get an exchange rate, and the condition on it turns out to be
-the whole story: **so long as the program has to live in writable memory**, one
-word of program costs about a quarter of that first core. Any instruction that
-removes program words pays for itself almost immediately. This is the opposite
-of the intuition that minimal instruction sets are cheap, and it is why SUBLEQ
-loses in this implementation — three words per instruction, five memory
-accesses each, and no comparison that leaves its operands intact, so every `if`
-becomes a macro.
+### What that implies
 
-## The curve, and where it turns
+Either way you get an exchange rate, and the condition on it is the whole story:
+**so long as the program has to live in writable memory**, one word of program
+costs about a quarter of that first core. Any instruction that removes program
+words pays for itself almost immediately.
 
-Sweep instruction sets across a five-program benchmark suite — Fibonacci,
-insertion sort, shift-and-add multiply, Euclid's GCD, binary-to-decimal — and
-total gate count falls steeply as you add instructions, then flattens and turns
-back up.
+This is the opposite of the intuition that minimal instruction sets are cheap,
+and it is why SUBLEQ loses in this implementation: three words per instruction,
+five memory accesses each, and no comparison that leaves its operands intact, so
+every `if` becomes a macro.
 
-Where the minimum sits depends on where the program lives, which is worth
-looking at directly because it is the break-even rule doing its work:
+## 2. Where the minimum lies
+
+### Two regimes, two answers
+
+Where the minimum sits depends on where the program lives:
 
 | instructions | program in writable RAM | program in ROM |
 |---|---:|---:|
@@ -65,42 +75,40 @@ looking at directly because it is the break-even rule doing its work:
 | 12 (adds two immediate forms) | **45,927** | 7,325 |
 | 14 (adds AND, OR, XOR, shift) | 47,497 | 7,280 |
 
-The original four-instruction set is not in that table, because it cannot run
-the suite at all: with only branch-if-zero and subtract there is no
-bounded-time way to compare two numbers, so deciding `a < b` costs steps
-proportional to the values themselves. It needs a fifth instruction —
-branch-on-sign — before it can sort anything, which is why the ladder starts at
-five.
+The original four-instruction set is absent because it cannot run the suite at
+all: with only branch-if-zero and subtract there is no bounded-time way to
+compare two numbers, so deciding `a < b` costs steps proportional to the values
+themselves. It needs branch-on-sign before it can sort anything, which is why
+the ladder starts at five.
 
-So there is a break-even rule, concrete and scoped: while the program must live
-in writable RAM, an instruction is worth adding if it removes at least one word
-of program per 196 gates it costs. The twelve-instruction variant is the rule
-working. Its two immediate forms cost 182 gates of core and remove eight words
-of program; in RAM those words are worth 1,568, so it comes out 1,386 gates
-ahead — against a measured 1,368. In ROM the same eight words are worth about
-34, so the same two instructions are a net loss, and the minimum moves to ten.
-The fourteen-instruction variant loses in both columns for the dull reason that
-the benchmark never executes its four logic instructions: 202 gates of decode
-for nothing.
+### The rule, working
 
-Note also that past the minimum the ROM column barely moves — 7,078, 7,325,
-7,280. "Turns back up" is a 3.5% wobble there, not a cliff. Hold on to that,
-and to the condition about writable RAM. The next section removes the
-condition, and takes the rule with it.
+While the program must live in writable RAM, an instruction is worth adding if
+it removes at least one word of program per 196 gates it costs. The
+twelve-instruction variant is that rule in action: its two immediate forms cost
+182 gates of core and remove eight words of program, worth 1,568 in RAM, so it
+should come out about 1,386 ahead — measured, 1,368. In ROM those same eight
+words are worth about 34, the same two instructions become a net loss, and the
+minimum moves to ten. The fourteen-instruction variant loses in both columns for
+a duller reason: the benchmark never executes its four logic instructions, so
+they are 202 gates of decode for nothing.
 
 That instructions reusing existing datapath are nearly free, while instructions
-adding new datapath rarely pay, is qualitatively consistent with what Sakamoto,
-Ahmed, Anderson and Hara-Azumi measured in *Subleq⊖: An Area-Efficient
-Two-Instruction-Set Computer* — a second instruction reusing the existing
-subtractor cost 1.33x area for a 2.78x speedup, while variants adding a
-dedicated shifter or multiplier cost 1.87x and 5.86x and ran slower in
-wall-clock terms. Their ratios are core area only, with memory outside the
-comparison, which if anything makes the agreement more interesting.
+adding new datapath rarely pay, is qualitatively consistent with Sakamoto,
+Ahmed, Anderson and Hara-Azumi's *Subleq⊖: An Area-Efficient Two-Instruction-Set
+Computer*, where a second instruction reusing the existing subtractor cost 1.33x
+area for a 2.78x speedup, while dedicated shifter and multiplier variants cost
+1.87x and 5.86x and ran slower in wall-clock terms. Their ratios are core area
+only, which if anything makes the agreement more interesting.
 
-## The finding that mattered
+Note also that past the minimum the ROM column barely moves. "Turns back up" is
+a 3.5% wobble there, not a cliff — and hold on to that condition about writable
+RAM, because the next chapter removes it and takes the rule with it.
 
-The curve turned out to be secondary. Sorted by gate count, the designs I built
-fall into two groups with nothing in between them:
+## 3. The thing that actually mattered
+
+The curve turned out to be secondary. Sorted by gate count, the designs fall
+into two groups with nothing in between:
 
 | | gates | operations |
 |---|---|---|
@@ -108,28 +116,23 @@ fall into two groups with nothing in between them:
 | can index without self-modifying code | 7,078 – 8,848 | 3–14 |
 
 ("Operations" means distinct primitive operations — opcodes plus memory-mapped
-port behaviours — not instruction words. The last section explains why
-instruction count turned out to be the wrong axis, and why a machine with one
-instruction can sit at three operations.)
+port behaviours — not instruction words. Chapter 5 explains why instruction
+count is the wrong axis, and how a machine with one instruction sits at three
+operations.)
 
-The boundary is whether the machine can index an array without modifying its
-own code. Under the gate-built memory model used throughout, the cheapest
-design that cannot is 6.7x larger than the cheapest design that can. Inside the
-cheap group everything sits within 25% of everything else, across a range from
-three operations to fourteen — so which side of the boundary a machine lands on
-depends far less on instruction count than on whether the program can be kept
-read-only. The designs inside the cheap group are not identical, but their
-spread does not track instruction count either: the fourteen-operation machine
-beats the twelve-operation one. Eligibility, meanwhile, is binary — a machine
-either never writes a program word or it does, with no partial credit. (How
-much of that 6.7x belongs to the memory model rather than to the architectures
-is the subject of the last part of this section.)
+Under the gate-built memory model, the cheapest design that cannot index is 6.7x
+larger than the cheapest that can. Inside the cheap group everything sits within
+25% of everything else across a range from three operations to fourteen, and the
+spread there does not track instruction count either: the fourteen-operation
+machine beats the twelve-operation one. Eligibility, by contrast, is binary — a
+machine either never writes a program word or it does.
 
-Here is the mechanism. None of these machines can express "element *i* of the
-array" in an instruction, because the address field is a constant baked into
-the instruction word. The address has to be computed somewhere. Without an
-index register you compute it in software, and the only place to put the result
-is inside an instruction:
+### Two ways to compute an address
+
+None of these machines can express "element *i* of the array" in an instruction,
+because the address field is a constant baked into the instruction word. The
+address has to be computed somewhere. Without an index register you compute it
+in software, and the only place to put the result is inside an instruction:
 
 ```
     LDA tmpl
@@ -147,128 +150,161 @@ With an index register, an 8-bit adder on the address path does it:
     STA d
 ```
 
-Five instructions become three, saving twelve words of program across the whole
-benchmark — ten across the suite's five indexed-access sites, plus the two
-constant words the self-modifying version needs as instruction templates.
+Five instructions become three, saving twelve words of program across the
+benchmark — ten across its five indexed-access sites, plus two constant words
+the self-modifying version needs as instruction templates.
 
-Those twelve words are worth about 2,350 gates if they sit in RAM and about 50
-if they sit in ROM, and both figures matter. Priced as RAM, density alone
-repays the index register's ~200 gates roughly tenfold. That is not a separate
-calculation from the table above, it is the same one: twelve words at 196
-gates, less 198 gates of extra core, predicts 2,154, and the measured
-seven-to-ten difference is 2,182 — a 28-gate residual, so word count really is
-the whole story there.
+### Why ~200 gates buy 37,951
+
+Those twelve words are worth about 2,350 gates in RAM and about 50 in ROM, and
+both figures matter. Priced as RAM, density alone repays the index register's
+~200 gates roughly tenfold — and that is not a separate calculation from the
+table above but the same one: twelve words at 196 gates less 198 of extra core
+predicts 2,154, against a measured seven-to-ten difference of 2,182. A 28-gate
+residual, so word count really is the whole story there.
 
 So this is not an architectural feature that fails to pay its way. It is one
-whose obvious payoff is an order of magnitude smaller than its real one.
-
-Because what the second version also does is never write to a program word. The
+whose obvious payoff is an order of magnitude smaller than its real one — and
+the real one is that the second version never writes to a program word. The
 program becomes read-only, and read-only storage is a completely different
-circuit: a ROM word is a few gates of decode-and-OR that logic synthesis shares
-across hundreds of words. Averaged over this image that is 4.3 gates per word
-against 196 for RAM, about 46x in this model.
+circuit: a ROM word is a few gates of decode-and-OR that synthesis shares across
+hundreds of words. Averaged over this image, 4.3 gates per word against 196 for
+RAM, about 46x.
 
-The controlled version of the comparison is this. The same ten-instruction
-machine, running the same program, costs **47,295 gates with its program in
-writable RAM and 9,344 with it in ROM** — a difference of 37,951 gates, with
-nothing changed but where the code sits. About 200 gates of index register are
-the only reason the second column is available at all. They do not save 37,951
-gates; they make 37,951 gates saveable. The index register is not an
-optimisation. It is a permission.
+The controlled comparison is this. The same ten-instruction machine, running the
+same program, costs **47,295 gates with its program in writable RAM and 9,344
+with it in ROM** — nothing changed but where the code sits. The index register
+is the only reason the second column exists at all. It does not save those
+37,951 gates; it makes them saveable. **The index register is not an
+optimisation. It is a permission.**
 
 (Moving the program's twelve read-only *constants* into ROM as well takes the
-total from 9,344 down to 7,078. That is a memory-map decision rather than an
-architectural one, and it is available to any design, so it does not belong in
-the comparison above — but it is where the headline 7,078 comes from.)
+total to 7,078, which is where the headline figure comes from. That is a
+memory-map decision available to any design, so it does not belong in the
+comparison.)
 
-This also retires the break-even rule from the previous section. Once the
-program is in ROM a word costs a few gates, not 196, so no plausible
-instruction removes enough program to pay for its decode logic. That is exactly
-why the cheap group is so flat: past the boundary, instruction count stops
-mattering much. One honest wrinkle — 4.3 is the average over this image, and
-the marginal word is content-dependent and can be near zero. The
-twelve-instruction variant has eight *fewer* program words yet costs 65 more
-gates outside its core, which is synthesis sharing the way synthesis does.
+This also retires the break-even rule from chapter 2. Once the program is in ROM
+a word costs a few gates, not 196, so no plausible instruction removes enough
+program to pay for its own decode logic. That is exactly why the cheap group is
+so flat.
 
-It is worth being plain about the shape of this argument, too. Once you grant
-that every word a program writes must be full-price RAM, it follows almost by
-construction that a self-modifying machine is expensive. The model is what
-makes it true *that* self-modification costs; the measurements are what
-establish *how much*.
+### What this does not show
 
-And that grant is the assumption I would attack first. The expensive group
-treats the program store as all-or-nothing: if any word is written, every word
-is priced as RAM. That is the memory map I built, but it is not forced. The
-addresses a self-modifying program patches are fixed at assembly time — `P` in
-the example above is a link-time constant — so the store could be split into
-ROM plus a handful of individually decoded writable words, and the
-seven-instruction machine would need five of them. Priced at my own per-word
-figures that lands somewhere near 8,000 gates, inside the cheap group. I have
-not built it, and the last time I reasoned about an unbuilt design in this
-project I got both its area and its timing wrong in opposite directions, so
-treat that as a sketch rather than a result. What survives regardless is
-narrower and still worth having: the index register removes the need for a
-writable code window altogether, and 6.7x is what the simple memory map — one
-ROM region, one RAM region — costs you for lacking it.
+*The marginal word is not the average word.* 4.3 is the mean over this image.
+The twelve-instruction variant has eight *fewer* program words yet costs 65 more
+gates outside its core, because synthesised ROM is priced by address width,
+output width and content structure, not by word count.
 
-Two smaller caveats, because the 46x ratio is doing so much work. It is partly
-a property of the memory model: real SRAM is roughly six transistors per bit
+*The argument is partly circular, by construction.* Once you grant that every
+word a program writes must be full-price RAM, a self-modifying machine is
+expensive almost by definition. The model makes it true *that* self-modification
+costs; the measurements establish *how much*.
+
+*The all-or-nothing program store is an assumption, and the one I would attack
+first.* The addresses a self-modifying program patches are fixed at assembly
+time — `P` above is a link-time constant — so the store could be split into ROM
+plus a handful of individually decoded writable words, five of them for the
+seven-instruction machine. At my own per-word figures that lands near 8,000
+gates, inside the cheap group. I have not built it, and the last time I reasoned
+about an unbuilt design here I got both its area and its timing wrong in
+opposite directions, so treat it as a sketch. What survives regardless: the
+index register removes the need for a writable window altogether, and 6.7x is
+what the simple one-ROM-one-RAM map costs you for lacking it.
+
+*The 46x is partly the technology.* Real SRAM is roughly six transistors per bit
 rather than six gates, and mask ROM roughly one, so with real memory macros the
 gap narrows substantially, though it does not invert. Those two figures are
-technology rules of thumb, not outputs of this synthesis flow. And the split
-depends on the workload: my suite sorts a 16-word array, so indexing is on the
+rules of thumb, not outputs of this flow.
+
+*The workload matters.* My suite sorts a 16-word array, so indexing is on the
 critical path. A program that never touches an array, or one you are happy to
 let rewrite itself, would move the boundary or erase it.
 
-## The design that won
+## 4. The machine that won
+
+### The instruction set
 
 Ten instructions, 16-bit words: `LDA`, `STA`, `ADD`, `SUB`, `JZ`, `JN`, `JMP`,
 `LDX`, `LDAX`, `STAX`. Three registers — a 16-bit accumulator, an 8-bit index,
-an 8-bit program counter — for 38 flip-flops once the state machine is
-included. One shared 16-bit adder, a three-state FSM, and the next fetch
-overlapped onto the last cycle of the current instruction, so nothing costs
-more than two cycles.
+an 8-bit program counter — for 38 flip-flops once the state machine is included.
+One shared 16-bit adder, a three-state FSM, and the next fetch overlapped onto
+the last cycle of the current instruction, so nothing costs more than two
+cycles.
 
-Total 7,078 gates: 4,597 is the benchmark's own working set in RAM, 1,509 is
-the processor and its output port, 912 is the entire program in ROM, and the
-remaining 60 is address decode and glue.
+### The gate budget
 
-The result looks a lot like a stripped-down PDP-8: accumulator, memory
-operands, conditional branches, indexed addressing.
+| | gates |
+|---|---:|
+| data RAM, 23 words | 4,597 |
+| processor and output port | 1,509 |
+| entire program, in ROM | 912 |
+| address decode and glue | 60 |
+| **total** | **7,078** |
 
-## What one instruction actually costs
+### Ancestors
+
+The result looks a lot like a stripped-down PDP-8, which is not surprising. What
+is more interesting is how many of these findings were already load-bearing in
+machines built when gates were genuinely expensive.
+
+The **6502** gives its first 256 bytes a shorter addressing mode: `LDA $12` is
+two bytes and three cycles where `LDA $0012` is three and four. That is the
+exchange rate, priced in address bits rather than gates — and with only one
+accumulator, the zero page is where a 6502 keeps the variables my machine keeps
+in its 23-word RAM. Its `,X` and `(zp),Y` modes do exactly what `LDAX`/`STAX` do
+here, for exactly the same reason.
+
+The **Apollo Guidance Computer** is the sharpest confirmation, three ways over.
+Its program lived in 36,864 words of core-rope ROM against 2,048 words of
+erasable core RAM — an 18:1 split, the same shape as the 212-word ROM and
+23-word RAM here. Rope stored twelve 16-bit words per magnetic core while
+erasable memory used one core per *bit*, a density ratio far past my measured
+46x, so the 1960s cost of writable storage was even more punishing than the
+gate-built model makes it. And the first seven addresses of its address space
+were not memory at all but hardware registers — accumulator, program counter,
+return address, a constant-zero register — which is precisely the memory-mapped
+trick chapter 5 is about.
+
+None of this was arrived at by reading about those machines. It is what falls
+out of counting gates, which is probably the most reassuring result here.
+
+## 5. What "one instruction" actually costs
+
+### The MOVE machine
 
 I also built Jones's Ultimate RISC, a 1988 design whose sole instruction is
 `MOVE src,dst`, with the ALU and program counter mapped to memory addresses. It
 landed within 3.5% of the ten-instruction machine — which looks like a striking
 win for minimalism until you notice that its destination address field selects
-among ten behaviours. That is functionally an opcode field — not merely a
-memory-mapped control register, because the field chooses the operation rather
-than only its destination — and its core measured larger, not smaller, because
-removing the opcode relocates the decoding rather than eliminating it.
+among ten behaviours. That is functionally an opcode field, not merely a
+memory-mapped control register, because it chooses the operation rather than
+only its destination. Its core measured *larger*, not smaller: removing the
+opcode relocates the decoding rather than eliminating it.
 
-The fair comparison was to give SUBLEQ the same hardware facilities: two
-addresses wired to hardware, an index register and an indirect port. Still one
-instruction, now three distinct operations. It went from 164,783 gates to 8,848
-— an 18.6x improvement — landing squarely in the cheap group.
+### SUBLEQ with the same hardware
 
-In this experiment, then, SUBLEQ's large area penalty was driven far more by
-addressing than by having one opcode. Its three-word instruction format
-survives the change untouched, and it is most of the 25% that still separates
-the ported version from the winner. It also still loses on time — three words
-per instruction, no native compare and no native add are properties of the
-instruction that no amount of wiring fixes — but the area gap was never really
-about the instruction count.
+The fair comparison was to give SUBLEQ the same facilities: two addresses wired
+to hardware, an index register and an indirect port. Still one instruction, now
+three operations. It went from 164,783 gates to 8,848, an 18.6x improvement,
+landing squarely in the cheap group.
 
-The compact version of all of it: a computer built from gates is mostly memory,
-memory you have to be able to write costs far more per word than memory you
-don't, and under those constraints the instruction set's decisive job is
-deciding which kind your program is allowed to live in.
+So SUBLEQ's large area penalty was driven far more by addressing than by having
+one opcode. Its three-word instruction format survives the change untouched, and
+is most of the 25% still separating it from the winner; it also still loses on
+time, because no amount of wiring supplies a native compare or add. But the area
+gap was never really about the instruction count.
+
+### The compact version
+
+A computer built from gates is mostly memory. Memory you have to be able to
+write costs far more per word than memory you don't. And under those
+constraints, the instruction set's decisive job is deciding which kind your
+program is allowed to live in.
 
 ---
 
-*All gate counts and cycle counts here are measured, not estimated: the RTL, the
-benchmark suite, the synthesis scripts and a Makefile that reproduces every
-number are in this repository. The transistor-per-bit comparisons and the
-hybrid-store sketch are explicitly not. See [DESIGN.md](DESIGN.md) for the
-winning machine and [project.md](project.md) for the full method.*
+*All gate and cycle counts are measured: the RTL, the benchmark suite, the
+synthesis scripts and a Makefile that reproduces every number are in this
+repository. The transistor-per-bit comparisons and the hybrid-store sketch are
+explicitly not. See [DESIGN.md](DESIGN.md) for the winning machine and
+[project.md](project.md) for the full method.*
