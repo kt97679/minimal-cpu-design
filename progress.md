@@ -1645,3 +1645,41 @@ Parity audited across both pairs: 82/82 and 50/50 blocks, identical structure,
 26 figures matching, no numbers split across wraps. Noted while auditing that
 the two languages use different multiplier notation (47x against 47×), which is
 correct in each and has to be excluded from the automated check.
+
+### 63. Deep parity audit of part 1 after the split
+
+Asked to make sure the Russian part 1 is in sync. It is, and the audit went
+further than block counts because twice before a translation complaint turned
+out to be a defect in the English.
+
+Checked and passing:
+
+* 82 blocks each, identical structure, 21 headings each in the same order and
+  at the same levels
+* no paragraph differs from its counterpart by more than one sentence
+* all three code blocks carry identical instruction sequences (only the
+  comments are translated, which is correct)
+* three tables each, matching row counts and matching numbers
+* links resolve per language: `ARTICLE-2.md` against `ARTICLE-2.ru.md`,
+  `DESIGN.md` and `project.md` shared
+* no part 2 content stranded: the only hits are the forward-pointer paragraph,
+  correctly translated, and the two places `XOR` legitimately appears in part 1
+  (the fourteen-instruction table row and the phase 7 instruction set)
+
+Two false alarms worth recording, because both would have sent me chasing
+nothing:
+
+*Per-block figure comparison flagged four blocks.* All four are Russian
+spelling a small number as a word where English uses a digit —
+`двухвходовые` for "2-input", `три процента` for "3%", `в 6,7 раза` rather than
+"6.7x", `восьмая фаза` for "phase 8". Correct in each language.
+
+*`wc -w` reported the Russian at a quarter of the English* (825 against 3,397),
+which looks like catastrophic truncation. It is a locale artifact: counted
+properly the files are 3,439 and 3,232 words, and 20,379 against 21,399
+characters. Russian having about 6% fewer words and 5% more characters is the
+normal signature of a real translation; the opposite pattern would be the alarm.
+
+Also corrected by the same audit: an earlier grep for stranded content used
+substring matching, so `CALL` matched "recall" and `RET` matched "interpret".
+Word-boundary matching is what the check needed.
