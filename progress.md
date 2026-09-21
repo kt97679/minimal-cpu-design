@@ -1489,3 +1489,47 @@ word per instruction, 16-bit data, the three-state machine, and the two
 array-access strategies. A stack machine, a two-address memory-to-memory
 machine, a pipelined or bit-serial one cannot be reached from here. The MOVE
 machine was a hand-built probe into one of those directions and lost by 3.5%.
+
+### 59. Phase 9: the stack machine, and the crossover
+
+Asked whether a stack machine had been tried, since Forth generates famously
+dense code, and whether a bigger task would change the answer.
+
+Built `sw/stackmachine.py` on the same terms as every other target:
+mechanically enumerated pool of 25, a compiler that searches breadth-first over
+stack states rather than using hand-written postfix rules, Verilog generated
+from the instruction list and synthesised. The compiler rediscovers postfix code
+unaided — `add d,s` comes out `LOAD d; LOAD s; ADD; STORE d`.
+
+Confirmed structurally: computed addressing is native (`push base; push i; add;
+fetch`), so a stack machine never needs an index register or self-modifying
+code. It is in the cheap cluster by construction.
+
+**It loses by ~12%**: 7,615 gates against 6,747 for the phase 7 RSB machine.
+Not for the reason the Forth argument suggests. Its code is *not* denser — 238
+words against 235 and 253 — and its core is 600-800 gates larger, because three
+16-bit stack registers plus the push/pop multiplexers cost much more than one
+accumulator and an 8-bit index. Depth 4 costs 300 gates and buys nothing: no
+expansion needs more than three cells.
+
+Two reasons the density did not appear, both worth recording. Only 14% of stack
+code words (33 of 238) are genuinely zero-address — `LOAD`, `LIT`, `STORE` and
+branches all carry operands — so packing the unused field is worth at most 142
+gates. And Forth's density comes from factoring into words via CALL/RETURN,
+which no machine in this project has. This is a stack machine without the
+mechanism Forth is dense because of, and the write-up says so rather than
+claiming the question is settled.
+
+**Crossover analysis** instead of the unbuilt bigger benchmark: scaling code
+while holding data and per-operation density fixed, the stack machine overtakes
+the accumulator at about 12x the current program, roughly 2,900 words. Below
+that its core dominates; above it, its 6% density edge compounds faster. Stated
+as an extrapolation whose weak assumption is constant per-operation density —
+and a program twelve times larger is precisely one with repeated sequences worth
+factoring, which is where the stack machine's real advantage lives.
+
+Not built, and listed as such: the bignum benchmark itself (full-precision
+Fibonacci printed in decimal, which phase 1 dodged with mod 2^16), and CALL and
+RETURN in any pool. The latter is now the third named unexamined assumption,
+alongside one memory port and one word per instruction, and it is the one most
+likely to matter for this particular question.

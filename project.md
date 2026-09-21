@@ -1164,3 +1164,104 @@ two array-access strategies. A stack machine, a two-address memory-to-memory
 machine, a pipelined machine or a bit-serial datapath cannot be reached from
 here. The MOVE machine of phase 5 was a hand-built probe into one of those
 directions and lost by 3.5%; the others are untested.
+
+---
+
+# Phase 9: a stack machine, and how much bigger the task would have to be
+
+Two questions from a reader: had I tried a stack machine, given that Forth
+generates famously dense code; and would a bigger task change the answer.
+
+## The stack machine
+
+Phases 1-8 could not reach one. The compiler searched over register states and
+the pool was built from `(operation x addressing mode x register)`; a
+zero-address machine is outside that frame entirely.
+
+`sw/stackmachine.py` adds it on the same terms as everything else: a
+mechanically enumerated pool (25 candidates — every binary ALU operation, the
+four standard stack shuffles, literal/load/store/fetch/store-indirect, every
+branch condition, shifts), a compiler that searches breadth-first over stack
+states rather than using hand-written postfix rules, and Verilog generated from
+the instruction list and synthesised for real. The top D entries of the stack
+live in registers; D is a parameter.
+
+The compiler rediscovers postfix code unaided: `add d,s` comes out as
+`LOAD d; LOAD s; ADD; STORE d`.
+
+**Computed addressing is native.** `push base; push i; add; fetch` is how a
+stack machine indexes, so it needs neither an index register nor self-modifying
+code. It lands in the cheap cluster of phases 3-8 by construction — that is not
+an empirical result, it is what the addressing model gives you for free.
+
+### Result
+
+| machine | gates | code words | cycles | core |
+|---|---:|---:|---:|---:|
+| stack, depth 3, with DUP/SWAP | 7,615 | 238 | 11,121 | 1,936 |
+| stack, depth 3, Forth-ish set | 7,630 | 238 | 11,121 | 1,951 |
+| stack, depth 4 | 7,909 | 238 | 11,121 | 2,230 |
+| accumulator, phase 7 RSB machine | **6,747** | 253 | 11,669 | 1,158 |
+| accumulator, phase 4 design | 6,846 | 235 | 10,345 | 1,334 |
+
+**The stack machine loses by about 12%**, and the reason is not what the Forth
+argument would predict. Its code is not denser: 238 words against 235 and 253.
+Its core is 600-800 gates bigger, because three 16-bit stack registers and the
+shifting multiplexers that push and pop them cost far more than one accumulator
+and an 8-bit index register.
+
+Going from depth 3 to depth 4 costs about 300 gates and buys nothing: no
+expansion the compiler found needs more than three stack cells.
+
+### Why the density did not appear
+
+Two reasons, and both matter for reading the result.
+
+**Half of a stack instruction still carries an address.** `LOAD`, `LIT`,
+`STORE` and every branch need an operand field, so only the ALU operations and
+shuffles are truly zero-address — 33 of 238 words, 14%. Packing those into
+narrower words would save at most 142 gates, which does not change the ranking.
+
+**Forth's density comes from factoring, not from the stack.** Threaded code is
+dense because a word is a call to another word, and no machine in this project
+has CALL or RETURN. This is therefore a stack machine without the mechanism
+Forth is actually dense because of. That is a limit of the experiment, not a
+verdict on Forth.
+
+## How much bigger the task would have to be
+
+The current benchmark cannot settle the density question, because code is only
+13% of the winning machine's gates and data is 65%. Scaling the program while
+holding data and per-operation density fixed:
+
+| code size | stack | accumulator | winner |
+|---|---:|---:|---|
+| x1 | 7,615 | 6,902 | accumulator |
+| x4 | 10,686 | 10,166 | accumulator |
+| x12 | 18,873 | 18,869 | dead heat |
+| x16 | 22,966 | 23,220 | **stack** |
+
+**The crossover is at about 12x the current program — roughly 2,900 words of
+code.** Below that the stack machine's larger core dominates; above it, its
+6% density advantage compounds faster than the core costs.
+
+That is an extrapolation, and its weak assumption is the one that matters: it
+holds per-operation density constant. A program twelve times larger is exactly
+the kind that would have repeated sequences worth factoring, and factoring is
+where a stack machine's advantage actually lives. Adding CALL and RETURN to
+both pools would change the slope, probably in the stack machine's favour, and
+would move the crossover down.
+
+## What was not built
+
+The bigger benchmark itself — full-precision Fibonacci printed in decimal,
+which phase 1 dodged by working modulo 2^16 — was specified but not
+implemented. It would add multi-word arithmetic (and so make carry detection,
+which no machine here has, suddenly worth instructions), unrolled code across
+word positions, and repeated division for decimal output. The crossover
+analysis above says what such a benchmark would have to reach before it changed
+the ranking, which is the more useful half of the answer, but it is not a
+substitute for running it.
+
+Nor is CALL/RETURN in any pool, which is a third unexamined assumption to add to
+the list — and the one most likely to matter for this particular question.
