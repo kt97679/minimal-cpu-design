@@ -58,6 +58,8 @@ def build_pool():
                     pushes=0, cycles=1)
     for n in ('SHR', 'SHL'):
         p[n] = dict(name=n, kind='sh', op=n, pops=1, pushes=1, cycles=1)
+    p['CALL'] = dict(name='CALL', kind='call', op='CALL', pops=0, pushes=0, cycles=1)
+    p['RET'] = dict(name='RET', kind='ret', op='RET', pops=0, pushes=0, cycles=1)
     return p
 
 
@@ -199,6 +201,10 @@ def compile_all(iset, depth):
     for k in ('movi_big', 'addi_small', 'subi_small'):
         if T.get(k) is None:
             return None
+    T['xor'] = None
+    qx = val(tuple(a ^ b for a, b in zip(d0, s0)))
+    if qx is not None:
+        T['xor'] = qx + (('STORE', 'd'),)
     q = val(s0)
     if q is None:
         return None
@@ -300,6 +306,12 @@ def gen_rtl(iset, depth, aw=8):
                 act = push('s1')
             d.append(f"4'd{o}: begin maddr = pc; ifetch = 1'b1; end")
             sq.append(f"4'd{o}: begin {act}; pc <= pc + 1'b1; state <= S_D; end")
+        elif k == 'call':
+            d.append(f"4'd{o}: begin maddr = iad; ifetch = 1'b1; end")
+            sq.append(f"4'd{o}: begin lr <= pc; pc <= iad + 1'b1; state <= S_D; end")
+        elif k == 'ret':
+            d.append(f"4'd{o}: begin maddr = lr; ifetch = 1'b1; end")
+            sq.append(f"4'd{o}: begin pc <= lr + 1'b1; state <= S_D; end")
         else:                                            # branch
             c = ("1'b1" if p['op'] == 'JMP' else
                  {'JZ': 'zf', 'JN': 'nf', 'JP': '(~nf & ~zf)', 'JNZ': '~zf',
@@ -310,7 +322,9 @@ def gen_rtl(iset, depth, aw=8):
                 body += '; ' + pop()
             sq.append(f"4'd{o}: begin {body}; state <= S_D; end")
     nl = '\n                '
-    regs = ' '.join(f'reg [15:0] s{i};' for i in range(D))
+    use_lr = any(POOL[n]['kind'] in ('call', 'ret') for n in order)
+    regs = ' '.join(f'reg [15:0] s{i};' for i in range(D)) + \
+           (' reg [AW-1:0] lr;' if use_lr else '')
     rst = ' '.join(f's{i} <= 16\'d0;' for i in range(D))
     return f"""// generated stack machine, depth {D}, set={' '.join(order)}
 module gcpu #(parameter AW = {aw}) (

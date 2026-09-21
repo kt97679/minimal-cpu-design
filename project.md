@@ -1265,3 +1265,105 @@ substitute for running it.
 
 Nor is CALL/RETURN in any pool, which is a third unexamined assumption to add to
 the list — and the one most likely to matter for this particular question.
+
+---
+
+# Phase 10: a workload shaped like real firmware
+
+The five-program suite was five textbook kernels. This one is the shape a small
+embedded controller actually has: scan a buffer of samples, reduce it, checksum
+it, format the results for a serial line. Sixteen samples; compute the wrapping
+sum, the minimum and the maximum by indexed scan; compute a CRC-16 with
+polynomial 0x1021, most significant bit first; print all four as five decimal
+digits each, through **one subroutine called four times**. Twenty outputs,
+verified against a directly computed model.
+
+It differs from the old suite in three ways that turn out to matter.
+
+## Finding 1: the phase 4 winner cannot run it
+
+The CRC needs XOR. The ten-instruction machine that won phases 1 through 6 has
+no logic operation at all, because **the old benchmark never needed one** — which
+is why phase 2 concluded that AND, OR, XOR and shift were 202 gates of dead
+weight.
+
+That conclusion was a property of the benchmark, not of the instruction set. A
+machine that cannot compute a checksum is not a practical controller, and
+nothing in the first nine phases could see that.
+
+| machine | on the firmware workload |
+|---|---|
+| phase 4 design (LDA STA ADD SUB JZ JN JMP LDX LDAX STAX) | **cannot run it** |
+| phase 7 RSB machine, which has XOR | runs it |
+
+## Finding 2: CALL and RETURN pay for themselves
+
+No machine in phases 1-9 had a subroutine instruction. The firmware workload
+calls its decimal formatter four times, so a machine without CALL must inline
+the body at every site.
+
+Adding CALL and RETURN — a link register, one level deep:
+
+| | code words | core gates | total | cycles |
+|---|---:|---:|---:|---:|
+| calls inlined | 326 | 1,226 | 8,058 | 30,092 |
+| with CALL/RETURN | **160** | 1,405 | **7,523** | 30,100 |
+
+**−166 words, +179 gates of core, −535 gates net.** This is the first
+instruction group in the whole project that pays for itself once the program is
+in ROM, and it does so because the thing it removes is not one word per site but
+a whole 55-operation subroutine body, three times over.
+
+Phase 3's break-even rule said an instruction is worth adding if it removes a
+word of program per 196 gates it costs. In the ROM regime that bar became
+impossible to clear — until an instruction arrived that removes code by the
+hundred rather than by the word.
+
+## Finding 3: the stack machine still loses, on the workload built to favour it
+
+Phase 9 found the stack machine 12% worse and predicted the gap would close on a
+code-heavy workload with subroutines, since factoring is where Forth's density
+actually lives. The firmware workload is exactly that, and both targets now have
+CALL and RETURN.
+
+| machine | gates | code words | cycles | core |
+|---|---:|---:|---:|---:|
+| accumulator + XOR + CALL/RET | **7,523** | 160 | 30,100 | 1,405 |
+| stack + XOR + CALL/RET | 8,355 | 179 | 30,204 | 2,155 |
+
+It loses by 11%, essentially the same margin as before. The prediction was
+wrong, and the reason is the one phase 9 already identified: `LOAD`, `LIT`,
+`STORE` and every branch carry an operand field whatever the machine, so only
+the ALU operations are genuinely zero-address. Factoring helps both machines
+equally; it does not close a gap that comes from three 16-bit stack registers
+costing more than one accumulator and an 8-bit index.
+
+## What a practical machine looks like
+
+Putting the three findings together, the shape that survives a realistic
+workload is about **twelve instructions**:
+
+```
+LD  ST        load and store, direct
+LDX LDAX STAX index register and indexed load/store
+RSB           reverse subtract  (does the work of ADD and SUB)
+XOR           for checksums
+JZ  JN  JMP   branch on zero, on sign, always
+CALL RET      subroutine, one level, via a link register
+```
+
+7,523 gates for the firmware workload, of which 5,400 is its own data. It is a
+PDP-8 with a checksum instruction and a link register — which is to say, it is
+close to what small controllers actually were.
+
+## What this says about the earlier phases
+
+Every phase before this one optimised against a benchmark that could not see
+logic operations or subroutines. Two of the ten phases' conclusions are now
+scoped rather than wrong: "logic instructions are dead weight" holds only for
+workloads with no bit manipulation, and "past the ROM boundary instruction count
+stops mattering" holds only for workloads with no repeated structure.
+
+The benchmark, not the method, was the limiting factor — which is the same
+lesson as phase 2's degenerate Fibonacci task, arriving a second time from a
+different direction.

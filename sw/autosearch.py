@@ -88,6 +88,9 @@ def build_pool():
     pool.append(dict(name='INX', kind='inx', op='INX', mode='-', cycles=1))
     for n in ('SHR', 'SHL'):
         pool.append(dict(name=n, kind='sh', op=n, mode='-', cycles=1))
+    # subroutine support: a link register, one level deep
+    pool.append(dict(name='CALL', kind='call', op='CALL', mode='D', cycles=1))
+    pool.append(dict(name='RET', kind='ret', op='RET', mode='-', cycles=1))
     return {p['name']: p for p in pool}
 
 
@@ -281,6 +284,12 @@ def compile_templates(iset, partial=False):
             if not partial:
                 return None
 
+    # XOR: the firmware benchmark of phase 10 needs it for its CRC; the
+    # original five-program suite never did, which is why phase 2 concluded
+    # logic instructions were dead weight.
+    q = acc_seq(tuple(a ^ b for a, b in zip(d0, s0)), depth=5)
+    T['xor'] = q + (('ST_D', 'd'),) if q is not None else None
+
     o = acc_seq(s0)
     if o is None:
         miss.append('out')
@@ -357,6 +366,7 @@ def gen_rtl(iset, aw=8):
         return None
     opc = {n: i for i, n in enumerate(order)}
     use_x = any(n in NEEDS_X for n in order)
+    use_lr = any(POOL[n]['kind'] in ('call', 'ret') for n in order)
     d_case, e_case, seq_d = [], [], []
     for n in order:
         p, o = POOL[n], opc[n]
@@ -380,6 +390,13 @@ def gen_rtl(iset, aw=8):
                           f" ifetch = 1'b1; end")
             seq_d.append(f"4'd{o}: begin pc <= ({c} ? iad : pc) + 1'b1;"
                          f" state <= S_D; end")
+        elif p['kind'] == 'call':
+            d_case.append(f"4'd{o}: begin maddr = iad; ifetch = 1'b1; end")
+            seq_d.append(f"4'd{o}: begin lr <= pc; pc <= iad + 1'b1;"
+                         f" state <= S_D; end")
+        elif p['kind'] == 'ret':
+            d_case.append(f"4'd{o}: begin maddr = lr; ifetch = 1'b1; end")
+            seq_d.append(f"4'd{o}: begin pc <= lr + 1'b1; state <= S_D; end")
         elif p['kind'] == 'ldx':
             if p['mode'] == 'I':
                 d_case.append(f"4'd{o}: begin maddr = pc; ifetch = 1'b1; end")
@@ -400,6 +417,7 @@ def gen_rtl(iset, aw=8):
                          f" pc <= pc + 1'b1; state <= S_D; end")
     nl = '\n                '
     XRST = "xreg <= 8'd0;" if use_x else ''
+    LRRST = "lr <= {AW{1'b0}};" if use_lr else ''
     return f"""// generated for instruction set: {' '.join(order)}
 module gcpu #(parameter AW = {aw}) (
     input wire clk, input wire rst,
@@ -408,6 +426,7 @@ module gcpu #(parameter AW = {aw}) (
     localparam S_D = 2'd0, S_E = 2'd1, S_W = 2'd2, S_F = 2'd3;
     reg [AW-1:0] pc; reg [15:0] acc; reg [3:0] op; reg [1:0] state;
     {'reg [7:0] xreg;' if use_x else ''}
+    {f'reg [{{AW}}-1:0] lr;' if use_lr else ''}
     wire [3:0] iop = mdin[15:12];
     wire [AW-1:0] iad = mdin[AW-1:0];
     wire [15:0] imm = {{{{4{{mdin[11]}}}}, mdin[11:0]}};
@@ -426,7 +445,7 @@ module gcpu #(parameter AW = {aw}) (
     always @(posedge clk) begin
         if (rst) begin
             pc <= {{AW{{1'b0}}}}; acc <= 16'd0; state <= S_F; op <= 4'd0;
-            {XRST}
+            {XRST} {LRRST}
         end else case (state)
             S_D: begin op <= iop; case (iop)
                 {nl.join(seq_d)}

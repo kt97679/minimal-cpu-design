@@ -1533,3 +1533,40 @@ Fibonacci printed in decimal, which phase 1 dodged with mod 2^16), and CALL and
 RETURN in any pool. The latter is now the third named unexamined assumption,
 alongside one memory port and one word per instruction, and it is the one most
 likely to matter for this particular question.
+
+### 60. Phase 10: a practical workload, and the two instructions it demands
+
+Asked to add CALL/RETURN and to consider workloads a machine could actually be
+used for. Built `sw/firmware.py`: 16 samples, indexed scan for sum/min/max, a
+CRC-16 (poly 0x1021, MSB first), and decimal formatting of all four results
+through one subroutine called four times. 72 virtual ops with CALL, 139 inlined.
+Verified against a directly computed model.
+
+**The phase 4 winner cannot run it.** The CRC needs XOR and that machine has no
+logic operation, because the old suite never needed one — which is exactly why
+phase 2 concluded logic instructions were 202 gates of dead weight. That
+conclusion was a property of the benchmark. A controller that cannot compute a
+checksum is not practical, and nine phases could not see it.
+
+**CALL/RETURN pays**, via a link register: 326 code words to 160, +179 gates of
+core, **-535 gates net**, cycles unchanged. First instruction group in the
+project to clear the break-even bar in the ROM regime, and it clears it because
+it removes a 55-operation subroutine body three times over rather than a word
+per site.
+
+**The stack machine still loses by 11%** (8,355 against 7,523) on the workload
+built to favour it, with CALL/RETURN available to both. Phase 9 predicted the
+gap would close and it did not: its code is still not denser (179 words against
+160), because LOAD, LIT, STORE and branches all carry operands whatever the
+machine. Factoring helps both equally and does not pay for three 16-bit stack
+registers.
+
+Resulting practical shape, about twelve instructions: LD ST LDX LDAX STAX RSB
+XOR JZ JN JMP CALL RET. 7,523 gates on the firmware workload, of which 5,400 is
+its own data.
+
+Process note: the edit adding the XOR template to `autosearch.py` silently
+matched nothing, because the anchor line had been rewritten in session 42. Found
+by grepping for the inserted text rather than trusting the command's exit
+status — which is the failure mode `prompts/03-audit-tooling.md` exists to catch,
+caught by its own rule two days after it was written.
