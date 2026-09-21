@@ -388,49 +388,14 @@ strategies the search chooses between. That is a search of an instruction space
 inside an architecture I picked, and the next thing to randomise is the
 architecture.
 
-## 7. What the benchmark could not see
+## Part 2
 
-Two of the claims above are narrower than they sound, and it took a different
-workload to show it. So I wrote one shaped like real firmware: scan a buffer of
-sixteen samples, reduce it to sum, minimum and maximum, compute a CRC-16, and
-print all four as decimal through one subroutine called four times.
-
-**The logic instructions are not dead weight.** A CRC needs XOR, and the
-ten-instruction machine of chapter 4 has no logic operation at all — because
-the five-program suite never needed one. XOR can be synthesised bit-serially
-from add and branch, but the checksum needs about 384 of them and each becomes
-roughly 128 operations, so it costs about fifty times what it should. Chapter
-2's "202 gates of decode for nothing" was a fact about the benchmark, not about
-the instruction set.
-
-**And one instruction does clear the break-even bar in ROM.** Adding CALL and
-RETURN — a link register, one level deep — takes the program from 326 words to
-160 for 179 gates of core: **535 gates saved**, cycles unchanged. Every
-instruction before it removed a word per call site and could not pay for itself
-once a word cost four gates. This one removes a fifty-five-operation subroutine
-body, three times over. The rule was right; the range of instruction sizes I
-had tested was too narrow.
-
-The machine that survives a realistic workload is about twelve instructions —
-load, store, indexed load and store with an index register, reverse subtract,
-XOR, three branches, call and return — at 7,523 gates, of which 5,400 is the
-workload's own data. Which is to say a PDP-8 with a checksum instruction and a
-link register: close to what small controllers actually were.
-
-I also built a stack machine, since Forth's density is the standing argument
-against accumulators. It lost by 12% on the original suite and by 11% here,
-even with subroutines available to both. Its code never came out denser,
-because `LOAD`, `LIT`, `STORE` and every branch carry an operand field whatever
-the machine, and three 16-bit stack registers cost more than one accumulator
-and an 8-bit index. The measurements are in the repository.
-
-The pattern worth taking away is not about stacks or checksums. Twice now the
-limiting factor has been the benchmark rather than the method: once when the
-task was so small that a hardwired state machine beat every computer, and again
-here, where a workload with no bit manipulation and no repeated structure could
-not see two of the things an instruction set is for. Optimising against a
-benchmark optimises against its blind spots too, and they are much harder to
-notice than an arithmetic error.
+Everything above was measured against five textbook kernels, and two of its
+conclusions turn out to be facts about that benchmark rather than about
+instruction sets. [Part 2](ARTICLE-2.md) hands the same machines a workload
+shaped like real firmware — a checksum, a subroutine, a serial-formatted result
+— and then asks what any of this means on silicon where the memory is SRAM and
+flash rather than gates.
 
 ---
 

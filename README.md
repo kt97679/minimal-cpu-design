@@ -218,9 +218,14 @@ was about having no way to touch an array.
 
 ## Documents
 
-* **[ARTICLE.md](ARTICLE.md)** — short write-up of the whole investigation and
-  what it found ([русский перевод](ARTICLE.ru.md)). A prompt for getting it
-  critically reviewed is in [review-prompt.md](review-prompt.md).
+* **[ARTICLE.md](ARTICLE.md)** — part 1: the most gate-efficient CPU for a
+  minimal task ([русский перевод](ARTICLE.ru.md)).
+* **[ARTICLE-2.md](ARTICLE-2.md)** — part 2: what changes when the workload is
+  real firmware, and what any of it means on silicon where memory is SRAM and
+  flash rather than gates — including a comparison with Cortex-M cores
+  ([русский перевод](ARTICLE-2.ru.md)).
+* A prompt for getting either critically reviewed is in
+  [review-prompt.md](review-prompt.md).
 * **[prompts/](prompts/INDEX.md)** — six reusable prompts extracted from this
   project's postmortem, each grounded in a specific failure that happened here:
   problem framing and degeneracy checks, escaping recall-driven candidate

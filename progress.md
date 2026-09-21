@@ -1607,3 +1607,41 @@ roughly 128 operations each, so it costs about fifty times what it should, and
 the compiler rejects it only because it cannot express XOR in straight-line
 code. "Cannot run it at a cost anyone would accept" is the accurate claim, and
 project.md now says that instead.
+
+### 62. Splitting the article in two
+
+Proposed: split into part 1 (most gate-efficient CPU for a minimal task) and
+part 2 (what changes when you try to be practical), with a comparison against
+real microcontrollers.
+
+Right call, and not only for length. The two halves answer different questions
+and reach conclusions that feel opposed: part 1 says memory dominates and the
+instruction set barely matters; part 2 says that was true of gate-built memory
+and a benchmark with no bit manipulation, and then shows the finding inverting
+twice on real silicon. Holding both in one piece made the second half read as a
+retraction rather than a scope.
+
+Part 1 keeps chapters 1-6 and ends with a pointer forward. Part 2 (1,650 words)
+takes the firmware workload, the XOR and CALL/RETURN findings, the stack
+machine, and a new chapter grounded in figures looked up rather than recalled:
+
+  Cortex-M0 ~12,000 gates in ARM's quoted figure, ~25,000 in NAND2-equivalents
+  per a vendor source; M0+ ~15,000; M3 ~43,000; M4 ~150,000. This project's
+  machine is 1,405 -- nine to eighteen times smaller depending on whose unit,
+  and the unit ambiguity is stated rather than hidden.
+
+  Per bit: flip-flop RAM 12.5 gate-equivalents, 6T SRAM 1.5, 1T flash 0.25, and
+  part 1's synthesised ROM 0.27 -- so the ROM half of the model was realistic
+  all along, and the writable-to-read-only ratio collapses from 47x to 6x.
+
+  Rebuilt with real SRAM the core becomes 52% of the machine, inverting part
+  1's headline. Give it 4 KB and the core is 2.7%; 128 KB and it is 0.09%. But
+  that domination is different in kind: in part 1 memory was large because the
+  instruction set made the program large, and a better one shrank it. In a real
+  microcontroller memory is large because the application needs it, and no
+  instruction set touches that.
+
+Parity audited across both pairs: 82/82 and 50/50 blocks, identical structure,
+26 figures matching, no numbers split across wraps. Noted while auditing that
+the two languages use different multiplier notation (47x against 47×), which is
+correct in each and has to be excluded from the automated check.
