@@ -173,6 +173,29 @@ What remains biased is stated in `project.md`: the skeleton, the two
 array-access strategies, the benchmark, and the fact that twelve restarts is
 sampling rather than exhaustion.
 
+## Phase 10: what the benchmark could not see
+
+A workload shaped like real firmware — scan a buffer, CRC-16 it, format the
+results in decimal through one subroutine called four times — breaks two of the
+findings above.
+
+* **Logic instructions are not dead weight.** A CRC needs XOR, and the
+  ten-instruction winner has none, because the five-program suite never needed
+  one. Phase 2's "202 gates of decode for nothing" was a fact about the
+  benchmark.
+* **CALL/RETURN does clear the break-even bar in ROM** — 326 code words to 160
+  for 179 gates of core, a net 535 saved. Every instruction before it removed a
+  word per site; this one removes a 55-operation body three times over.
+* **The stack machine still loses** — 12% on the original suite, 11% here, even
+  with subroutines available to both. Forth's density does not transfer, because
+  `LOAD`, `LIT`, `STORE` and branches carry operands whatever the machine.
+
+The machine that survives a realistic workload is about twelve instructions —
+LD ST LDX LDAX STAX RSB XOR JZ JN JMP CALL RET — at 7,523 gates, of which 5,400
+is the workload's own data.
+
+Twice now the limiting factor has been the benchmark rather than the method.
+
 ## The actual finding
 
 Sorted by gate count the field splits in two, and the boundary is not the

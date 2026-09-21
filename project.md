@@ -1280,7 +1280,7 @@ verified against a directly computed model.
 
 It differs from the old suite in three ways that turn out to matter.
 
-## Finding 1: the phase 4 winner cannot run it
+## Finding 1: the phase 4 winner cannot do a checksum at any sensible cost
 
 The CRC needs XOR. The ten-instruction machine that won phases 1 through 6 has
 no logic operation at all, because **the old benchmark never needed one** — which
@@ -1293,8 +1293,16 @@ nothing in the first nine phases could see that.
 
 | machine | on the firmware workload |
 |---|---|
-| phase 4 design (LDA STA ADD SUB JZ JN JMP LDX LDAX STAX) | **cannot run it** |
+| phase 4 design (LDA STA ADD SUB JZ JN JMP LDX LDAX STAX) | no XOR; see below |
 | phase 7 RSB machine, which has XOR | runs it |
+
+To be precise rather than dramatic: XOR is not unreachable on a machine with
+only add, subtract and branches — it can be synthesised bit-serially, testing
+and shifting one bit at a time. But the CRC needs about 384 XOR operations, each
+becoming roughly 128 virtual operations, so the checksum costs about 50x what it
+should. The compiler rejects the machine because it cannot express XOR in
+straight-line code; the honest statement is not "cannot run it" but "cannot run
+it at a cost anyone would accept".
 
 ## Finding 2: CALL and RETURN pay for themselves
 

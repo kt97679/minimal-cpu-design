@@ -1570,3 +1570,40 @@ matched nothing, because the anchor line had been rewritten in session 42. Found
 by grepping for the inserted text rather than trusting the command's exit
 status — which is the failure mode `prompts/03-audit-tooling.md` exists to catch,
 caught by its own rule two days after it was written.
+
+### 61. Deciding what of phases 9-10 belongs in the article
+
+Asked whether the new findings were worth adding. Answered selectively rather
+than by appending everything, since the reader feedback that produced the
+restructure was that the article is too long and repetitive.
+
+The test applied: a finding earns article space if it *changes a claim already
+in the article*, not merely if it is new.
+
+In, as a new chapter 7 (~380 words):
+  * logic instructions are not dead weight -- this contradicts chapter 2's "202
+    gates of decode for nothing", so it is a correction, not an addition;
+  * CALL/RETURN clears the break-even bar -- this scopes chapter 3's "past the
+    boundary instruction count stops mattering", which was stated flatly;
+  * the closing observation that twice the benchmark, not the method, has been
+    the limiting factor. That is the most transferable thing the project has
+    produced and the article did not say it.
+
+In, as forward pointers of one sentence each: chapter 2's dead-weight line and
+chapter 3's flat-group line now warn the reader that chapter 7 narrows them,
+rather than being quietly contradicted forty lines later.
+
+In, as one paragraph rather than a chapter: the stack machine. "We tried X and
+it lost" is completeness, not thesis, and the full treatment is in project.md.
+
+Out: the crossover analysis, the firmware benchmark's construction, the
+architecture sweep of phase 8, the search machinery. All measured, all in
+project.md, none of them changing a claim a reader of the article holds.
+
+Also corrected an overstatement of my own from the previous session. I wrote
+that the phase 4 machine "cannot run" the firmware workload. It can: XOR is
+synthesisable bit-serially from add and branch. The CRC needs about 384 XORs at
+roughly 128 operations each, so it costs about fifty times what it should, and
+the compiler rejects it only because it cannot express XOR in straight-line
+code. "Cannot run it at a cost anyone would accept" is the accurate claim, and
+project.md now says that instead.
