@@ -1,3 +1,14 @@
+---
+id: 06-handling-review
+when: on receipt of feedback, before editing
+applies-when:
+  - review feedback has arrived, from any source
+  - you are about to act on a criticism
+skip-when:
+  - (none)
+produces: a per-finding disposition: accepted and how, or rejected and why, with any refutation shown
+cost: low
+---
 # 06 — Handling review feedback
 
 **Use it** when review feedback arrives, before changing anything.
@@ -69,3 +80,13 @@ useful single correction in the project.
 **Watch for feedback that flatters.** A reviewer who confirms your result
 deserves the same verification as one who attacks it. The confirming review is
 the one you will not check.
+
+---
+
+## Deliverable
+
+A per-finding disposition: accepted and how, or rejected and why, with any refutation shown.
+
+Produce it as an artifact in the response — a table, a list, a count. Do not
+narrate having considered these points. A reader must be able to check that the
+step happened by looking at the output, not by trusting a summary of it.

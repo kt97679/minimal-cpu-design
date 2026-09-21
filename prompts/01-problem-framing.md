@@ -1,3 +1,16 @@
+---
+id: 01-problem-framing
+when: before the first measurement
+applies-when:
+  - the task is a measurement, comparison, benchmark or optimisation
+  - you are about to start producing numbers
+  - the user asks which of several things is best/cheapest/fastest
+skip-when:
+  - the quantity to optimise and the cost model are already fixed and stated
+  - the task is implementation of an already-specified design
+produces: a written question, cost model, degeneracy check, budget decomposition and falsification criterion
+cost: low (one turn)
+---
 # 01 — Problem framing: find the dominant term, check for degeneracy
 
 **Use it** at the start of any project whose output is a measured comparison or
@@ -58,3 +71,13 @@ turned out to be 97% of the machine, the interesting question stopped being
 "which instruction set" and became "which kind of memory can the program live
 in" — which was the project's actual finding, and it was invisible until the
 budget was decomposed.
+
+---
+
+## Deliverable
+
+A written question, cost model, degeneracy check, budget decomposition and falsification criterion.
+
+Produce it as an artifact in the response — a table, a list, a count. Do not
+narrate having considered these points. A reader must be able to check that the
+step happened by looking at the output, not by trusting a summary of it.

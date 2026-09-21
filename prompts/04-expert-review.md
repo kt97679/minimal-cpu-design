@@ -1,3 +1,15 @@
+---
+id: 04-expert-review
+when: after the claims settle, before publication
+applies-when:
+  - a technical write-up is nearly finished
+  - you are about to publish claims backed by evidence
+skip-when:
+  - the claims are still changing
+  - the artifact is not yet self-consistent
+produces: a verdict, three worst problems with quotes and fixes, smaller issues in document order, an arithmetic check
+cost: one review round per pass; returns diminish sharply after about three
+---
 # 04 — Expert review: attack the claims
 
 **Use it** when a technical write-up is nearly finished and you want its claims
@@ -79,3 +91,13 @@ the numbers against the source rather than taking them on trust.
 **Diminishing returns are real.** By round five the findings had moved from
 errors to matters of degree, and the round's headline item turned out to be
 arithmetically wrong. Stop when the caveats start outgrowing the findings.
+
+---
+
+## Deliverable
+
+A verdict, three worst problems with quotes and fixes, smaller issues in document order, an arithmetic check.
+
+Produce it as an artifact in the response — a table, a list, a count. Do not
+narrate having considered these points. A reader must be able to check that the
+step happened by looking at the output, not by trusting a summary of it.

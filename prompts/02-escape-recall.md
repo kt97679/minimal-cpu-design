@@ -1,3 +1,16 @@
+---
+id: 02-escape-recall
+when: before naming any candidate
+applies-when:
+  - the task asks for the best/optimal/minimal/fastest X
+  - you are about to list candidate approaches, architectures or algorithms
+  - any answer would name well-known existing systems
+skip-when:
+  - the user has fixed the candidate set and does not want it questioned
+  - the task is to explain or implement one named approach
+produces: an axis table with completeness counts, >=3 deliberately unconventional candidates, a uniform random sample, a list of what stayed fixed
+cost: high (mechanical enumeration produces mostly unusable candidates; budget a cheap feasibility filter)
+---
 # 02 — Escape recall: search the space, don't recite it
 
 **Use it** whenever a task is "find the best X", "what is the optimal Y", or
@@ -25,20 +38,27 @@ search would have confirmed my original answer and I would have believed it.
 Before you propose candidates for this problem, stop and do the following.
 Show your work for each step; do not skip to the answer.
 
-1. NAME THE RECALL. List the solutions you are about to propose. For each,
-   say whether it is well known, and if so, from where. If every candidate on
-   your list is an existing, named thing, you are recalling, not searching,
-   and the rest of these steps are mandatory.
+1. NAME THE RECALL. Write the table before writing anything else:
+
+      | candidate you were about to propose | is it a named existing system? | named after/where |
+
+   If every row says yes, you are recalling, not searching. Steps 2-7 are
+   then mandatory, not optional. Do not skip this table on the grounds that
+   the answer is obvious; writing it is what makes the next steps happen.
 
 2. ENUMERATE THE SPACE MECHANICALLY. Do not list solutions. Identify the
    independent axes the solution space actually has, and generate candidates
    as combinations of points on those axes. Write the axes down explicitly.
 
-3. AUDIT THE ENUMERATION FOR COMPLETENESS. For each axis, state how many
-   possible values it has and how many you included. If those numbers differ,
-   justify every omission or fix it. Pay particular attention to values that
-   are unusual, asymmetric, or that no familiar system uses — those are the
-   ones a recall-driven enumeration silently drops.
+3. AUDIT THE ENUMERATION FOR COMPLETENESS. Produce this table:
+
+      | axis | possible values | values I included | missing |
+
+   Compute the counts; do not estimate them. If any row has a non-empty
+   "missing" column, either include those values or justify each one in
+   writing. Unusual, asymmetric values and ones no familiar system uses are
+   the ones a recall-driven enumeration drops, and they are exactly where the
+   result changed in the project this prompt came from.
 
 4. ADD DELIBERATE STRANGERS. Include at least three candidates chosen
    specifically because no well-known system uses them, and say for each why
@@ -46,11 +66,12 @@ Show your work for each step; do not skip to the answer.
    unfashionable, historically contingent, or bad for constraints that no
    longer apply? Keep the ones where you cannot answer.
 
-5. SAMPLE BEFORE YOU OPTIMISE. Evaluate a uniform random sample of the space
-   before running any local or greedy search. Report the distribution, not
-   just the best. Local search from a hand-picked starting point inherits the
-   bias of that starting point; uniform sampling shows you the shape of the
-   space and tells you whether your optimum is a peak or a plateau.
+5. SAMPLE BEFORE YOU OPTIMISE. Draw a uniform random sample of the space and
+   evaluate it *before* any local or greedy search. Report the distribution —
+   count, range, and where the known-good candidates fall within it — not just
+   the best. Local search from a hand-picked start inherits that start's bias;
+   the sample is what tells you whether your optimum is a peak or a plateau,
+   and whether the space has structure you did not put there.
 
 6. STATE WHAT IS STILL FIXED. Everything you did not vary is an assumption:
    the framework, the representation, the interfaces, the metric. List them.
@@ -83,3 +104,13 @@ answer you started with.
 **This prompt is not free.** Mechanical enumeration produces many unusable
 candidates — in this project about 98.5% of uniformly drawn ones — so you need
 a cheap feasibility filter before the expensive evaluation. Budget for that.
+
+---
+
+## Deliverable
+
+An axis table with completeness counts, >=3 deliberately unconventional candidates, a uniform random sample, a list of what stayed fixed.
+
+Produce it as an artifact in the response — a table, a list, a count. Do not
+narrate having considered these points. A reader must be able to check that the
+step happened by looking at the output, not by trusting a summary of it.

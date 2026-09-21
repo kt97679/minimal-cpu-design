@@ -1,3 +1,15 @@
+---
+id: 03-audit-tooling
+when: before reporting any number
+applies-when:
+  - you are about to report measured numbers
+  - a result agrees with what you already expected
+  - two numbers from different routes came out equal or suspiciously round
+skip-when:
+  - no figure in the output was produced by tooling you wrote
+produces: a modelled-vs-measured table, a calibration against a known case, a direction-of-error statement per approximation
+cost: low to medium
+---
 # 03 — Audit your own tooling before you believe it
 
 **Use it** before reporting any measured result, and especially when a result
@@ -72,3 +84,13 @@ numbers were individually plausible and all the tests passed.
 marginal storage, wrote it up, and only later decomposed it properly to find it
 was two wasted words of a different kind of storage. The wrong diagnosis had
 already been published in three documents.
+
+---
+
+## Deliverable
+
+A modelled-vs-measured table, a calibration against a known case, a direction-of-error statement per approximation.
+
+Produce it as an artifact in the response — a table, a list, a count. Do not
+narrate having considered these points. A reader must be able to check that the
+step happened by looking at the output, not by trusting a summary of it.

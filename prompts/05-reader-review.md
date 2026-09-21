@@ -1,3 +1,14 @@
+---
+id: 05-reader-review
+when: after 04, before publication
+applies-when:
+  - a technical write-up has passed a correctness review
+  - the audience includes anyone who has not done the work
+skip-when:
+  - the claims have not settled yet -- restructuring a moving argument wastes both passes
+produces: the first three places a reader stopped, a one-sentence statement of the investigation, a structure verdict, a repetition list, a comparison-set challenge
+cost: low; run it on a human if at all possible
+---
 # 05 — Reader review: can anyone actually follow this?
 
 **Use it** after a technical write-up has survived a correctness review, and
@@ -82,3 +93,13 @@ tightened.
 
 **Do not run this before the claims are settled.** Restructuring an argument
 that is still changing wastes both passes.
+
+---
+
+## Deliverable
+
+The first three places a reader stopped, a one-sentence statement of the investigation, a structure verdict, a repetition list, a comparison-set challenge.
+
+Produce it as an artifact in the response — a table, a list, a count. Do not
+narrate having considered these points. A reader must be able to check that the
+step happened by looking at the output, not by trusting a summary of it.

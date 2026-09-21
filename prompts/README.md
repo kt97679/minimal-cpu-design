@@ -1,12 +1,21 @@
-# Reusable prompts
+# ai-prompts
 
-Extracted from the postmortem of this project. Each one exists because of a
-specific failure that actually happened here, named under "Why this exists" so
-the prompt is not generic advice — you can check whether the failure mode
-applies to your situation before spending a turn on it.
+Reusable prompts for AI-assisted technical work.
 
-They are written to be pasted whole into a session. Nothing in them is about
-CPUs.
+**Start here: [INDEX.md](INDEX.md)** — the dispatcher. Projects should
+reference that file, not this one. [USAGE.md](USAGE.md) explains how to wire it
+into a project.
+
+## The library
+
+Each prompt exists because of a specific failure in a real project, named under
+"Why this exists", so it is not generic advice: you can check whether the
+failure mode applies to your situation before spending a turn on it.
+
+They were extracted from the postmortem of a hardware-measurement project
+(comparing minimal CPU designs by synthesised gate count). That is provenance,
+not prerequisite — nothing in the prompts is about CPUs, and the failures they
+describe are ones any measurement or write-up project can reproduce.
 
 | | use it | guards against |
 |---|---|---|
@@ -19,8 +28,9 @@ CPUs.
 
 ## The two that mattered most
 
-Five rounds of expert review improved this project's write-up and caught three
-real errors. Two interventions from outside that cycle changed the *work*:
+In the originating project, five rounds of expert review improved the write-up
+and caught three real errors. Two interventions from outside that cycle changed
+the *work* itself:
 
 * a reader asking for structure, a problem statement, and less repetition —
   which no expert reviewer had mentioned, because they were all reading for
@@ -31,3 +41,13 @@ real errors. Two interventions from outside that cycle changed the *work*:
   the hand-made one and resembles nothing in the historical record.
 
 If you only take two, take `02` and `05`.
+
+## A limitation, stated up front
+
+`02` asks an assistant to notice that it is reciting known solutions rather
+than searching. That is the thing a model is least equipped to notice about
+itself — in the originating project it did not, and a human reader did. Every
+step of `02` therefore demands a table with counts in it rather than a
+reflection, and `INDEX.md` says how to check that the table is there. Treat
+self-application as a weaker substitute for a second pair of eyes, not a
+replacement.

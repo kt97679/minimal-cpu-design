@@ -1398,3 +1398,39 @@ mode applies before spending a turn on it:
 
 The index says plainly that if only two are used, they should be `02` and `05`,
 since those are the two that changed the work rather than its presentation.
+
+### 57. Reworking the prompts for a shared library
+
+Asked whether the prompts would work if kept in a separate `ai-prompts`
+repository, referenced from other projects, with the assistant reading them and
+applying whichever fit. Mostly yes, after three changes and one honest warning.
+
+**Changes made.**
+
+* *Machine-readable triggers.* Each file now opens with front matter giving its
+  id, the moment it fires, `applies-when`, `skip-when`, what it produces and
+  what it costs. Self-selection needs declared conditions, not prose the
+  assistant has to infer an applicability rule from.
+* *A dispatcher.* `INDEX.md` is now the only file a project should reference: a
+  short trigger table, instructions to fetch the individual prompts lazily at
+  the moment they fire rather than all at once, and a rule that a skipped
+  prompt must be declared in one line. Reading six prompts at session start
+  produces ceremony; reading a table and fetching one produces effect.
+* *Required artifacts instead of reflection.* Every prompt now ends with a
+  Deliverable section naming a table, list or count that must appear in the
+  response. `02` in particular was rewritten so its two hardest steps demand
+  tables with computed counts — "candidates I was about to propose, is each a
+  named existing system" and "axis, possible values, values included,
+  missing" — rather than asking the assistant to consider whether it might be
+  biased.
+
+**The warning, recorded in both `INDEX.md` and the library README.** `02` asks
+a model to notice that it is reciting rather than searching, which is precisely
+the thing it is least able to notice about itself. In this project it did not;
+a human reader did. The tables are a mitigation, not a fix, and the library now
+says so rather than implying self-application is equivalent.
+
+Also added `USAGE.md`: how to reference the library (pin a commit, not a
+branch; link the index, not the directory), how to record per-project
+overrides, and a table of what artifact to look for to check each prompt was
+actually applied rather than merely mentioned.
