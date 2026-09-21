@@ -1060,3 +1060,107 @@ already knew about" to "I searched a mechanically enumerated instruction space
 within an architecture I chose." That is a real improvement and a partial
 answer. It is not a machine designed from nothing, and the sections above should
 not be read as claiming otherwise.
+
+---
+
+# Phase 8: putting the architecture in the search
+
+Phase 7 searched instruction sets inside a skeleton I had chosen — one
+accumulator, memory operands, one optional index register. That skeleton was
+the last unexamined assumption, and it is the same class of assumption the bias
+objection was about: one accumulator with memory operands is what nearly every
+small machine has ever had, which is exactly why it needed testing rather than
+assuming.
+
+## What was generalised
+
+Two structural axes, with the instruction pool regenerated for each point:
+
+* **R**, the number of general data registers: 1, 2 or 3.
+* **X**, the number of index registers: 0, 1 or 2.
+
+For each `(R, X)` the pool contains every arithmetic operation in every
+addressing mode targeting every register, a store from every register, every
+branch condition testing every register, an index load and increment per index
+register, and register-to-register moves when R > 1. Pool sizes run from 26 at
+`(1, 0)` to 144 at `(3, 2)`. The compiler, the abstract machine it searches over
+and the Verilog generator were all generalised to match; the generated RTL
+compiles for every point tested.
+
+**Control:** at `(1, 1)` with the phase 4 instruction set, the generalised
+compiler emits exactly the phase 4 expansions — `LD0_D s; ST0_D d` for a move,
+`LD0_D d; ADD0_D s; ST0_D d` for an add.
+
+**Still fixed**, and why: 16-bit data words, because phase 4 measured that
+storage cost is set by bits stored rather than by words; one memory port, one
+word per instruction and the three-state skeleton, because they are constant
+across every design in phases 1-8 rather than a variable; and the benchmark and
+memory model.
+
+## Results
+
+Modelled gates. The model is the phase 7 one, which was shown there to mis-rank
+candidates differing by less than about 3%, so small differences below are not
+evidence.
+
+| R | X | best modelled gates | cycles | index scheme |
+|---:|---:|---:|---:|---|
+| 1 | 0 | 52,271 | 11,591 | self-patching |
+| 1 | 1 | 6,820 | 11,669 | index register |
+| 1 | 2 | 6,772 | 13,185 | index register |
+| 2 | 1 | 6,902 | 13,327 | index register |
+| 2 | 2 | 7,319 | 10,948 | index register |
+| 3 | 1 | 7,097 | 11,425 | index register |
+| 3 | 2 | 50,640 | 11,025 | self-patching |
+
+Across all 13 runs: every machine that could use an index register landed
+between 6,772 and 7,319 gates; every machine that had to self-patch landed
+between 50,640 and 56,749.
+
+## What this supports
+
+**More registers buy nothing.** Every point from one to three accumulators lands
+in the same 6,772-7,319 band, which is inside the model's error. A second
+accumulator costs sixteen flip-flops and wider decode, and the compiler cannot
+remove enough program words to repay it — the same break-even arithmetic that
+governs everything else in this project. The one-accumulator skeleton I assumed
+in phase 1 and never questioned turns out to be right, and now on evidence
+rather than on my say-so.
+
+**A second index register buys nothing either.** `(1, 2)` and `(1, 1)` differ by
+0.7%, well inside the noise.
+
+**The index register itself remains the only thing that matters.** The 8x split
+reappears at a third independent point in the space: architectures with an
+index register 6,772-7,319, architectures without 50,640-56,749, nothing
+between. This is now established from three separate directions — hand-designed
+ladders, an instruction-set search, and an architecture sweep.
+
+## What this does not support
+
+The rows are modelled, not measured. The phase 7 lesson was precisely that this
+model mis-ranks close candidates, so the ordering *within* the cheap band is not
+a result. The honest statement is that R and the second X make no difference
+that this method can detect, not that R=1 is optimal by 1.2%.
+
+The two rows that land on self-patching at `(2, 2)` and `(3, 2)` are seeding
+luck rather than architecture: a later restart at `(2, 2)` found an
+index-register machine at 7,319. With more restarts those rows would move. They
+are shown as run rather than quietly dropped, but they should not be read as the
+cost of those architectures.
+
+Sampling is the weak point throughout. Uniform random subsets are hopeless at
+these pool sizes — the feasible fraction is well under one in a thousand at
+`(3, 2)` — so starts were drawn by choosing a working register uniformly and
+then one instruction uniformly per structural role, with local search free to
+change anything afterwards. The roles are mine. That is a weaker guarantee than
+phase 7's uniform sampling at `(1, 1)`, and it is the next thing to fix.
+
+## The remaining assumptions
+
+After this phase the fixed skeleton is: one memory port, one word per
+instruction, a three-state fetch/execute/writeback machine, 16-bit data, and the
+two array-access strategies. A stack machine, a two-address memory-to-memory
+machine, a pipelined machine or a bit-serial datapath cannot be reached from
+here. The MOVE machine of phase 5 was a hand-built probe into one of those
+directions and lost by 3.5%; the others are untested.

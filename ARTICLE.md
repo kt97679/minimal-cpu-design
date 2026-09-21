@@ -363,6 +363,19 @@ used, a 200-gate handicap applied only to the searched machines. The first
 error made the search look right when it was wrong, and the second made it look
 wrong when it was right.
 
+Phase 8 then put the skeleton itself in the search: the number of data
+registers and the number of index registers became axes, with the instruction
+pool, the compiler and the Verilog regenerated for each point. One accumulator
+turns out to be right — every architecture from one to three registers lands in
+the same 6,772–7,319 gate band, inside the model's error, because a second
+accumulator costs flip-flops and decode that no amount of shorter code repays.
+A second index register is likewise neutral. And the 8x split reappears at a
+third independent point: architectures that can index land in that band,
+architectures that cannot land between 50,640 and 56,749. What is still fixed
+after that is one memory port, one word per instruction, 16-bit data and the
+three-state skeleton — a stack machine or a pipelined one cannot be reached
+from here.
+
 So the honest answer to the objection is that it was correct. A machine built
 around reverse subtract, with no add, no subtract and no unconditional jump,
 resembles nothing in the historical record, and it is smaller than the design I

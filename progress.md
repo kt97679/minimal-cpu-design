@@ -1434,3 +1434,58 @@ Also added `USAGE.md`: how to reference the library (pin a commit, not a
 branch; link the index, not the directory), how to record per-project
 overrides, and a table of what artifact to look for to check each prompt was
 actually applied rather than merely mentioned.
+
+### 58. Phase 8: the architecture in the search
+
+Asked to proceed with randomising the architecture itself, which the phase 7
+write-up had named as the next thing to do.
+
+Generalised two structural axes — R data registers (1-3) and X index registers
+(0-2) — with the instruction pool, the abstract machine the compiler searches
+over, and the Verilog generator all regenerated per point. Pools run 26 to 144
+candidates. Control: at (1,1) with the phase 4 set, the generalised compiler
+emits exactly the phase 4 expansions.
+
+Two modelling bugs surfaced and were fixed. Role-based seeding filled roles from
+instructions targeting *different* registers, so nothing composed at R>1; the
+seeder now draws a working register uniformly first. And `branch_plan` filtered
+unconditional jumps by the register they nominally test, although an
+unconditional jump does not depend on it — that alone was making most R=2
+machines look infeasible.
+
+Surface, modelled gates:
+
+```
+R  X   gates   cycles  scheme
+1  0   52271   11591   patch
+1  1    6820   11669   reg
+1  2    6772   13185   reg
+2  1    6902   13327   reg
+2  2    7319   10948   reg
+3  1    7097   11425   reg
+3  2   50640   11025   patch   (seeding luck; a later restart found 7,319 at 2,2)
+```
+
+**More registers buy nothing.** One to three accumulators all land in
+6,772-7,319, inside the model's ~3% error. A second accumulator costs sixteen
+flip-flops and wider decode and the compiler cannot remove enough program words
+to repay it. The one-accumulator skeleton assumed in phase 1 and never
+questioned is right — now on evidence rather than assumption. A second index
+register is likewise neutral (0.7%).
+
+**The index register is still the only thing that matters.** Across all 13 runs:
+with one, 6,772-7,319 gates; without, 50,640-56,749. Nothing between. That split
+is now established from three independent directions — hand-designed ladders, an
+instruction-set search, and an architecture sweep.
+
+Stated as not supported: the ordering *within* the cheap band, because the phase
+7 lesson was that this model mis-ranks candidates differing by under ~3%. And
+sampling is weaker here than in phase 7 — uniform subsets are hopeless at these
+pool sizes, so starts come from a random working register plus one random
+instruction per structural role, and the roles are mine.
+
+Remaining fixed skeleton, now a short list with reasons: one memory port, one
+word per instruction, 16-bit data, the three-state machine, and the two
+array-access strategies. A stack machine, a two-address memory-to-memory
+machine, a pipelined or bit-serial one cannot be reached from here. The MOVE
+machine was a hand-built probe into one of those directions and lost by 3.5%.
