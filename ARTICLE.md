@@ -120,12 +120,17 @@ into two groups with nothing in between:
 | | gates | operations |
 |---|---|---|
 | cannot index without self-modifying code | 47,295 – 164,783 | 1–7 |
-
-![Every design measured, by total gates. Machines that can index an array
-without rewriting their own code cluster between 7,078 and 8,848 gates;
-machines that cannot cluster between 47,295 and 164,783, with nothing in
-between.](fig/clusters.svg)
 | can index without self-modifying code | 7,078 – 8,848 | 3–14 |
+
+```
+5,000    10,000       20,000          50,000       100,000     200,000
+┬───────────┬────────────┬───────────────┬────────────┬───────────┬
+      oo  o                             xx  x                  x
+      └───┘                             └──────────────────────┘
+      7,078 - 8,848                     47,295 - 164,783
+```
+
+Every design measured, by total gates, on a logarithmic scale. `o` = can index an array without rewriting its own code; `x` = cannot.
 
 ("Operations" means distinct primitive operations — opcodes plus memory-mapped
 port behaviours — not instruction words. Chapter 5 explains why instruction
@@ -251,7 +256,17 @@ more than two cycles.
 
 ### The gate budget
 
-![Where the 7,078 gates go: 4,597 is data RAM, 1,509 the processor, 912 the whole program in ROM, 60 glue.](fig/budget.svg)
+```
+######################################=============........:
+└───────────── data RAM ─────────────┘└── core ───┘└ ROM ─┘
+
+data RAM   4,597  65%
+core       1,509  21%
+ROM          912  13%
+glue          60   1%
+```
+
+Where the 7,078 gates go. Each character of the bar is about 118 gates.
 
 | | gates |
 |---|---:|
