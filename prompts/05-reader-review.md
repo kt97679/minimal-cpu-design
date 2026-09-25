@@ -77,6 +77,11 @@ fix it.
 
 ## Notes
 
+**Pair it with [07](07-audience-research.md).** That prompt covers the three
+mechanical tests — first three sentences, skimmer, pictures — which are cheaper
+to run than a review and catch different things. Run those first; bring this one
+the questions a checklist cannot answer.
+
 **Run this on a human if you possibly can.** The value here came from an actual
 reader with actual impatience. A model asked to simulate a non-specialist will
 simulate one that is more patient and better informed than any real reader.

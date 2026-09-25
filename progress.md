@@ -1683,3 +1683,43 @@ normal signature of a real translation; the opposite pattern would be the alarm.
 Also corrected by the same audit: an earlier grep for stranded content used
 substring matching, so `CALL` matched "recall" and `RET` matched "interpret".
 Word-boundary matching is what the check needed.
+
+### 64. An audience-research document from another project, and what it found here
+
+Pointed at `AUDIENCE.md` from a Forth VM project: an analysis of three target
+venues (a Forth forum, Habr, Hacker News/Lobsters) built by reading them rather
+than guessing — including the moderators' list of mistakes and comment threads
+under technically sound articles that were received badly.
+
+It does something this prompt library did not do at all: **research the audience
+before writing.** Every prompt here assumed the artefact existed and asked how
+to check it. Added `prompts/07-audience-research.md`, generalising the method:
+name who is actually there, adopt their vocabulary, find what the venue
+punishes, name the metric (views and rating are different currencies), list the
+venue's mechanics, plan the route including resubmission, and treat a
+translation made from a finished text as a named failure mode.
+
+The sharpest idea in it, and the one I would not have had: **read what fails,
+not only what succeeds.** Moderation posts and hostile threads under good
+articles are more informative than the popular examples.
+
+Three of its tests applied immediately to articles already through six review
+rounds and a reader review:
+
+* *Zero images.* Both parts had none — fourteen headings and several tables of
+  numbers, nothing visual. Added `fig/clusters.svg` (every design on a log axis,
+  showing the two groups and the empty space between them) and
+  `fig/budget.svg` (where the 7,078 gates go). The cluster figure is the
+  article's central claim and was previously a table a skimmer would pass over.
+* *The first-three-sentences test.* Title plus three sentences must answer "is
+  this for me" and "what do I get". Part 1 answered the first and not the
+  second until chapter 3. Added one sentence saying what the reader takes away.
+* *The machine-translation failure mode.* My Russian versions were produced
+  from the finished English, which is exactly the shape that reads as
+  translated. My audits check figures, structure and sentence counts — none of
+  which can detect calques or English sentence rhythm. Recorded as a known,
+  unfixed risk needing a native reading pass; `07` now says so generally.
+
+Not adopted: the venue-specific mechanics (Habr's cut, КДПВ sizing, hub limits)
+belong in a per-venue note rather than in a general prompt, which is why `07`
+asks for the list rather than containing one.

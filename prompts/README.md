@@ -24,6 +24,7 @@ describe are ones any measurement or write-up project can reproduce.
 | [03-audit-tooling](03-audit-tooling.md) | before reporting any measured result | measurement tools that quietly favour the answer you already have |
 | [04-expert-review](04-expert-review.md) | when a technical write-up is nearly done | overclaiming; unstated modelling assumptions |
 | [05-reader-review](05-reader-review.md) | after the expert review passes | unreadable structure, repetition, no problem statement |
+| [07-audience-research](07-audience-research.md) | before drafting for a named venue | writing for an imagined reader; burying the point; zero images |
 | [06-handling-review](06-handling-review.md) | when review feedback arrives | accepting wrong criticism, rejecting right criticism, silent drift |
 
 ## The two that mattered most

@@ -24,6 +24,7 @@ fetched lazily when their trigger conditions are met.
 | `03-audit-tooling` | report a measured number produced by tooling you wrote, *or* report a result that agrees with what you expected | no figure came from your own tooling |
 | `04-expert-review` | publish a technical write-up whose claims have settled | the claims are still moving |
 | `05-reader-review` | publish, after `04` has passed | the claims are still moving |
+| `07-audience-research` | **draft anything for a named venue or community** | the artefact is internal with one known reader |
 | `06-handling-review` | act on any review feedback | never skip |
 
 ## The one that is hardest to self-apply

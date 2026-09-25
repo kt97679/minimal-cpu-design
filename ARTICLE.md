@@ -8,7 +8,10 @@ Turing-complete. You can compile C to it. People build them on FPGAs for fun.
 A natural question is whether that minimality also buys a smaller machine —
 fewer gates in total, counting the memory as well as the processor. The answer
 is no, and the reason turns out to have almost nothing to do with instruction
-counts.
+counts. What you get from reading it: measured gate counts for eleven machines
+from one instruction to fourteen, the exchange rate between a word of memory
+and a gate that decides all of it, and the one instruction group that turns out
+to matter more than the other ten put together.
 
 ## What I measured, and how
 
@@ -117,6 +120,11 @@ into two groups with nothing in between:
 | | gates | operations |
 |---|---|---|
 | cannot index without self-modifying code | 47,295 – 164,783 | 1–7 |
+
+![Every design measured, by total gates. Machines that can index an array
+without rewriting their own code cluster between 7,078 and 8,848 gates;
+machines that cannot cluster between 47,295 and 164,783, with nothing in
+between.](fig/clusters.svg)
 | can index without self-modifying code | 7,078 – 8,848 | 3–14 |
 
 ("Operations" means distinct primitive operations — opcodes plus memory-mapped
@@ -242,6 +250,8 @@ overlapped onto the last cycle of the current instruction, so nothing costs
 more than two cycles.
 
 ### The gate budget
+
+![Where the 7,078 gates go: 4,597 is data RAM, 1,509 the processor, 912 the whole program in ROM, 60 glue.](fig/budget.svg)
 
 | | gates |
 |---|---:|
