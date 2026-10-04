@@ -1763,7 +1763,7 @@ from the array — which reads like it should help, since the array is only
 addressed through the index register and the scalars only directly — comes out
 15 gates worse. Both are the kind of idea that sounds right and measures wrong.
 
-**A circulating store is the largest single win in the project.** Put the
+**A circulating store is the largest single win so far** — and phase 17 retracts this, because the storage element found in phase 16 is both cheaper per word and constant-time. Read the two together. Put the
 sixteen array words in a ring that shifts past one port, with no decoder and no
 mux at all, and the memory falls from 4,597 gates to 3,850: the whole machine
 goes from 7,078 to **6,331, a 10.6% reduction**. Nothing found by searching
@@ -1883,3 +1883,60 @@ flip-flops and why this is a real engineering trade rather than free money. The
 three-state machine here holds its address stable for the whole write cycle, so
 it ought to be sound — but "ought to be sound" is not a simulation, and this has
 not had one.
+
+---
+
+# Phase 17: the ring does not scale, and never won in the first place
+
+Phase 15 called the circulating store "the largest single win in the project".
+Phase 16, one phase later, measured a cheaper storage element. Asked whether the
+ring scales with capacity, the answer turns out to retract phase 15's headline
+rather than qualify it.
+
+## Area per word is flat; time per access is not
+
+| words | ring, flip-flops | addressed, flip-flops | addressed, latches | ring access |
+|---:|---:|---:|---:|---:|
+| 16 | 148/word | 193/word | 114/word | 8 cycles |
+| 23 | 149/word | 196/word | 116/word | 11 cycles |
+| 64 | 146/word | 194/word | 116/word | 32 cycles |
+| 128 | 145/word | 194/word | 116/word | 64 cycles |
+| 256 | 145/word | 194/word | 116/word | 128 cycles |
+
+All three are linear in capacity with a flat per-word cost, so the ring's area
+advantage over a flip-flop file neither grows nor shrinks. **What scales is the
+access time**, at (N-1)/2 cycles: eleven at 23 words, 128 at 256, 512 at 1024.
+On the benchmark's 340 array accesses that is 3,700 extra cycles at 23 words and
+174,000 at 1024. The ring is a design for memories small enough that you do not
+mind waiting for them, and nothing else.
+
+## And it was never the cheapest, even at 23 words
+
+**146 gates a word for the ring against 116 for a latch-addressed file.** The
+ring loses on area too, at every capacity measured, while also being the only
+one of the three with non-constant access time.
+
+The mechanism is worth stating because it is not obvious. A ring stage cannot
+use a latch — shifting requires edge triggering, or a two-phase clock and a pair
+of latches per stage, which costs more than the flip-flop it replaces. So the
+ring pays six gates a bit where an addressed file pays four. And it does not
+even escape the multiplexer: each stage still needs one to choose between
+shifting, holding and being written. It trades a shared decoder for a
+distributed mux, keeps the expensive cell, and buys linear access time with the
+difference.
+
+## What this retracts
+
+Phase 15's result stands as measured — a ring is 25% smaller than the
+**flip-flop** file it was compared against — and that comparison is no longer
+the relevant one. Against the storage element phase 16 found, the ring is
+dominated outright: more area, more time, at every size tested.
+
+So the project's best memory is the plainest one: an addressed file of gated D
+latches with a combinational read, 116 gates a word, constant access time. The
+exotic organisation lost to a cheaper cell in the ordinary one.
+
+This is the second time in three phases that a structural idea measured worse
+than the boring alternative, after banking and splitting in phase 15. The
+pattern is consistent enough to be worth naming: **in this cost model, cleverness
+in the organisation of memory keeps losing to cheapness in its unit.**

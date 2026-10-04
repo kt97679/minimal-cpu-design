@@ -2166,3 +2166,35 @@ Not retrofitted: forty published figures would move to make every machine 26%
 smaller and leave every conclusion as it was. Not verified either -- a
 latch-based file needs a glitch-free write enable, which the three-state machine
 ought to give it, and "ought to" is not a simulation.
+
+### 74. Phase 17: the ring retracted
+
+Asked whether the ring store scales with RAM capacity. Measured at 16, 23, 64,
+128 and 256 words, and the answer retracts phase 15 rather than qualifying it.
+
+**Area per word is flat for all three organisations** — ring ~146, addressed
+flip-flop ~194, addressed latch ~116 — so none of them degrades with capacity.
+What scales is the ring's access time, at (N-1)/2 cycles: 11 at 23 words, 128 at
+256, 512 at 1024. On the benchmark's 340 array accesses that is +3,700 cycles at
+23 words and +174,000 at 1024.
+
+**And the ring was never the cheapest.** 146 gates a word against 116 for a
+latch-addressed file: it loses on area at every size measured, while being the
+only one of the three without constant access time.
+
+The mechanism is not obvious and is worth keeping. A ring stage cannot use a
+latch, because shifting needs edge triggering (or two-phase clocking and a pair
+of latches per stage, which costs more than the flip-flop). So it pays six gates
+a bit where an addressed file pays four. And it does not escape the multiplexer
+either — each stage needs one to choose shift, hold or write. It trades a shared
+decoder for a distributed mux, keeps the expensive cell, and buys linear access
+time with the difference.
+
+Phase 15's "largest single win in the project" is now marked as superseded **at
+the point where it is claimed**, not only in the later phase, because a reader
+who stops at phase 15 would otherwise carry away a retracted result.
+
+Second time in three phases that a structural idea measured worse than the
+boring alternative, after banking and splitting. Worth naming as a pattern: in
+this cost model, cleverness in the organisation of memory keeps losing to
+cheapness in its unit.
