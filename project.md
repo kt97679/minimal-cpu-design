@@ -1940,3 +1940,66 @@ This is the second time in three phases that a structural idea measured worse
 than the boring alternative, after banking and splitting in phase 15. The
 pattern is consistent enough to be worth naming: **in this cost model, cleverness
 in the organisation of memory keeps losing to cheapness in its unit.**
+
+---
+
+# Phase 18: why there is nothing left for a search to find in the memory
+
+Asked whether genetic programming could find a better memory design still. The
+honest answer is no, and the reason is measurable rather than a matter of taste.
+
+**The space is small and now enumerated.** Flat, split by use, banked by two,
+four and eight, circulating, registered and combinational read, flip-flop and
+latch cells: eight organisations, all synthesised. Every exotic one measured
+worse than the plain one.
+
+**The remaining cost is two terms, and neither responds to reorganisation.**
+Measured marginally, a word costs 64 gates of storage (sixteen latches at four)
+plus 54 of decode and multiplexer — 116 in total, flat from 1 word to 32.
+
+**The multiplexer is already at the tool's floor.** Writing it out explicitly as
+a one-hot AND-OR tree, rather than letting synthesis infer it from `mem[addr]`,
+produces 1,196 gates either way — identical to the gate. There is no slack to
+recover by writing better RTL, so there is nothing for a search over RTL shapes
+to find.
+
+**And bit-serial access, the one structural idea left, measures worse.** Reading
+and writing the same 368 bits one at a time costs 3,496 gates against 2,668.
+The reason is worth keeping, because it is the general rule the whole phase
+reduces to:
+
+```
+a multiplexer costs about one 2:1 cell per INPUT bit,
+regardless of how its outputs are grouped
+
+  23:1 over 16-bit words   368 inputs, 16 outputs   16 x 22 = 352 cells
+  368:1 over single bits   368 inputs,  1 output         367 = 367 cells
+```
+
+Identical. Serialising the datapath does not shrink the multiplexer at all — it
+only makes the write decode per-bit instead of per-word, which is where the
+extra 828 gates go.
+
+## What the memory costs, finally
+
+**7.25 gates per stored bit:** four for the latch, 3.25 for its share of the
+multiplexer. Both scale with the number of bits stored and neither with how
+those bits are arranged.
+
+So the only remaining lever on memory is **storing fewer bits**, which is not a
+hardware search at all — it is a question about what the program needs, and
+phase 4 already measured that storage cost is set by bits rather than words.
+
+## When a search would have been the right tool, and why not here
+
+Genetic programming earned its place in phase 12 because the space of
+instruction semantics was large, non-obvious, and had the property that useful
+operations existed which no curated pool would contain. None of those hold here:
+eight organisations is not a space, the cost decomposes into two terms with
+known mechanisms, and the one genuinely non-obvious structure anyone has
+proposed — the ring — was measured and lost.
+
+The useful general form: **search where the space is large and the mechanism is
+unknown; measure where it is small and the mechanism is understood.** Four
+phases of memory work ended with the plainest possible design, and the value was
+in the measurements that ruled the alternatives out.

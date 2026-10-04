@@ -2198,3 +2198,42 @@ Second time in three phases that a structural idea measured worse than the
 boring alternative, after banking and splitting. Worth naming as a pattern: in
 this cost model, cleverness in the organisation of memory keeps losing to
 cheapness in its unit.
+
+### 75. Phase 18: no, and the measurement says why
+
+Asked whether GP could find a better memory design still. No, and for reasons
+that are measured rather than argued.
+
+The space is enumerated: eight organisations, all synthesised, every exotic one
+worse than the plain one. The remaining cost is 64 gates of storage plus 54 of
+decode and mux per word, flat from 1 to 32 words. The mux is at the tool's
+floor -- writing it as an explicit one-hot AND-OR tree gives 1,196 gates,
+identical to the gate against letting synthesis infer it from `mem[addr]`, so
+there is no slack for a search over RTL shapes.
+
+And bit-serial, the last structural idea, measures worse: 3,496 against 2,668
+for the same 368 bits. The rule behind it is the keeper:
+
+```
+a multiplexer costs about one 2:1 cell per INPUT bit, however the outputs
+are grouped
+   23:1 over 16-bit words   368 in, 16 out   16 x 22 = 352 cells
+   368:1 over single bits   368 in,  1 out        367 = 367 cells
+```
+
+So serialising does not shrink the mux at all; it only makes the write decode
+per-bit, which is where the extra 828 gates go.
+
+Final memory cost: **7.25 gates per stored bit** -- four for the latch, 3.25 for
+its share of the mux. Both scale with bits stored, neither with arrangement. The
+only lever left is storing fewer bits, which is a question about the program.
+
+Also caught: my first decomposition probe reported the read mux as 0 gates,
+because removing the write decode made every word identical and synthesis
+deleted 22 of 23. I nearly recorded "the mux is free". Prompt `03`'s rule that
+absence of output is a measurement too is what stopped it -- a mux cannot be 0
+gates, so the probe was wrong, not the design.
+
+The general form worth keeping: search where the space is large and the
+mechanism unknown; measure where it is small and the mechanism understood. GP
+earned its place in phase 12 on instruction semantics and does not here.
