@@ -115,7 +115,11 @@ RAM, because the next chapter removes it and takes the rule with it.
 ## 3. The thing that actually mattered
 
 The curve turned out to be secondary. Sorted by gate count, the designs fall
-into two groups with nothing in between:
+into two groups with nothing in between. That is a claim about something not
+appearing, so it is worth saying what was looked at: 129 machines drawn at
+random that could run the benchmark landed 4 in the cheap group and 125 in the
+expensive one, and none between. The gap is not an artefact of which designs I
+chose to build.
 
 | | gates | operations |
 |---|---|---|
@@ -237,11 +241,15 @@ So the mechanism survives and the magnitude does not. Writable storage still
 costs about 220 gates a word against 4.3 for read-only, and that is still the
 largest ratio in this project. What does not survive is the idea that a machine
 which rewrites its own code must pay for a writable *program store*. It pays
-for the words it actually writes, and there are five. The index register
-removes those five plus about 35 words of program, and is worth around 15% of a
-7,000-gate machine — still the largest single instruction-set effect measured
-anywhere here, but 15% rather than 570%. **The 6.7x is what a coarse memory map
-costs, and a coarse memory map is a design choice rather than a law.**
+for the words it actually writes, and there are five. Decomposed, so that the
+comparison is of one variable rather than three: the index group costs 198
+gates of core, removes five writable words at about 220 each, and removes about
+35 words of program at 4.3 each — a net saving of 1,052 gates, against a
+measured difference between the two machines of 1,063. It is worth around 15%
+of a 7,000-gate machine: still the largest single instruction-set effect
+measured anywhere here, but 15% rather than 570%. **The 6.7x is what a coarse
+memory map costs, and a coarse memory map is a design choice rather than a
+law.**
 
 One more thing the earlier chapters could not see. Every comparison above
 counts *cycles*, which is a proxy for time only if the clock period is the same
@@ -451,6 +459,8 @@ flash rather than gates.
 
 *All gate and cycle counts are measured: the RTL, the benchmark suite, the
 synthesis scripts and a Makefile that reproduces every number are in this
-repository. The transistor-per-bit comparisons and the hybrid-store sketch are
-explicitly not. See [DESIGN.md](DESIGN.md) for the winning machine and
-[project.md](project.md) for the full method.*
+repository, and `make verify` recomputes the published figures and compares
+them against a recorded baseline, so a reader can check them rather than trust
+them. The transistor-per-bit comparisons are explicitly not. See
+[DESIGN.md](DESIGN.md) for the winning machine and [project.md](project.md) for
+the full method.*

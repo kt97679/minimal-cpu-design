@@ -2,10 +2,10 @@
 
 [Part 1](ARTICLE.md) built minimal CPUs out of logic gates and counted them,
 memory included. It found that a 16-bit word of gate-built RAM costs about 196
-NAND-equivalents, so the machine is mostly memory; that the decisive property of
-an instruction set is whether it lets the program be read-only; that instruction
-count is the wrong axis; and that ten instructions won, until a mechanical
-search beat them with a machine built on reverse subtract.
+NAND-equivalents, so the machine is mostly memory; that the decisive property
+of an instruction set is whether it lets the program be read-only; that
+instruction count is the wrong axis; and that ten instructions won, until a
+mechanical search beat them with a machine built on reverse subtract.
 
 All of that was measured against five textbook kernels. This part asks two
 questions the first could not. What survives a workload that looks like actual
@@ -42,9 +42,9 @@ workload but that it cannot run it at a price anyone would pay.
 
 ## 3. CALL and RETURN pay for themselves
 
-No machine in part 1 had a subroutine instruction. The decimal formatter here is
-called four times, so a machine without one must inline fifty-five operations at
-every site.
+No machine in part 1 had a subroutine instruction. The decimal formatter here
+is called four times, so a machine without one must inline fifty-five
+operations at every site.
 
 | | code words | core gates | total | cycles |
 |---|---:|---:|---:|---:|
@@ -54,21 +54,21 @@ every site.
 A link register, one level deep: **−166 words, +179 gates of core, −535 gates
 net**, cycles unchanged.
 
-This is the first instruction group in the whole project to clear the break-even
-bar once the program is in ROM, and the reason is worth stating precisely. Part
-1's rule is that an instruction earns its place by removing a word of program
-per 196 gates it costs — and once a word costs four gates instead of 196,
-nothing clears it. Every instruction tested up to this point removed *one word
-per call site*. This one removes a whole body, three times over. The rule was
-right; the range of instruction sizes I had tested was too narrow to show what
-it permitted.
+This is the first instruction group in the whole project to clear the
+break-even bar once the program is in ROM, and the reason is worth stating
+precisely. Part 1's rule is that an instruction earns its place by removing a
+word of program per 196 gates it costs — and once a word costs four gates
+instead of 196, nothing clears it. Every instruction tested up to this point
+removed *one word per call site*. This one removes a whole body, three times
+over. The rule was right; the range of instruction sizes I had tested was too
+narrow to show what it permitted.
 
 ## 4. The stack machine still loses
 
-Forth's code density is the standing argument against accumulator machines, so I
-built a stack machine too: mechanically enumerated pool, a compiler that
-searches over stack states rather than using hand-written postfix rules, Verilog
-generated and synthesised like everything else.
+Forth's code density is the standing argument against accumulator machines, so
+I built a stack machine too: mechanically enumerated pool, a compiler that
+searches over stack states rather than using hand-written postfix rules,
+Verilog generated and synthesised like everything else.
 
 One thing it gets for free. `push base; push i; add; fetch` is how a stack
 machine indexes, so it never needs an index register or self-modifying code. By
@@ -100,14 +100,14 @@ JZ  JN  JMP       branch on zero, on sign, always
 CALL RET          subroutine, one level, via a link register
 ```
 
-7,523 gates on the firmware workload, of which 5,400 is the workload's own data.
-Which is to say: a PDP-8 with a checksum instruction and a link register.
+7,523 gates on the firmware workload, of which 5,400 is the workload's own
+data. Which is to say: a PDP-8 with a checksum instruction and a link register.
 
 ## 6. What real microcontrollers say
 
-Everything above prices memory as flip-flops, because the premise was a computer
-built entirely from gates. Real silicon does not work that way, and the
-difference decides how much of this transfers.
+Everything above prices memory as flip-flops, because the premise was a
+computer built entirely from gates. Real silicon does not work that way, and
+the difference decides how much of this transfers.
 
 ### Cores
 
@@ -157,21 +157,33 @@ flip-flops:
 | with 4 KB of SRAM | 49,152 | 2.7% |
 | with 128 KB of SRAM | 1,572,864 | 0.09% |
 
-At this size, real SRAM inverts part 1's headline finding: the core becomes half
-the machine and the instruction set matters again, more than anything part 1
-concluded.
+```
+as built in part 1     #########.....................................  18.7%
+with real SRAM         ########################......................  51.2%
+with 4 KB of RAM       #.............................................   2.7%
+with 128 KB of RAM     #.............................................   0.1%
+                       ### = processor
+```
 
-And then a real microcontroller inverts it back, much harder. Give the same core
-4 KB of RAM — modest by any modern standard — and it is 2.7% of the silicon.
-Give it 128 KB and it is a rounding error at 0.09%.
+The processor's share of the machine, as the memory technology and the memory
+size change. Real SRAM makes the instruction set matter more than anything part
+1 concluded; a real microcontroller's RAM makes it a rounding error.
+
+At this size, real SRAM inverts part 1's headline finding: the core becomes
+half the machine and the instruction set matters again, more than anything part
+1 concluded.
+
+And then a real microcontroller inverts it back, much harder. Give the same
+core 4 KB of RAM — modest by any modern standard — and it is 2.7% of the
+silicon. Give it 128 KB and it is a rounding error at 0.09%.
 
 But this is a different kind of domination from part 1's. There, memory was
 large because the *instruction set* made the program large, and a better
-instruction set shrank it. Here, memory is large because the *application* needs
-it, and no instruction set touches that at all.
+instruction set shrank it. Here, memory is large because the *application*
+needs it, and no instruction set touches that at all.
 
-So the honest summary for anyone choosing a real microcontroller: the thing part
-1 measured so carefully decides one to three percent of the die, and the
+So the honest summary for anyone choosing a real microcontroller: the thing
+part 1 measured so carefully decides one to three percent of the die, and the
 remaining ninety-seven is set by how much RAM your application needs. The
 interesting question stops being which instructions the machine has and becomes
 what the memory is for.
@@ -193,14 +205,15 @@ That is the finding that survived every change of benchmark and cost model.
 task was so small that a hardwired state machine beat every computer; and again
 here, where a workload with no bit manipulation and no repeated structure could
 not see two of the things an instruction set is for. Optimising against a
-benchmark optimises against its blind spots as well, and those are far harder to
-notice than an arithmetic error.
+benchmark optimises against its blind spots as well, and those are far harder
+to notice than an arithmetic error.
 
 ---
 
 *All gate and cycle counts are measured: the RTL, both benchmark suites, the
 search machinery and a Makefile that reproduces every number are in this
-repository. The per-bit figures for SRAM and flash are standard cell structures,
-not outputs of this flow, and the microcontroller gate counts are vendor figures
-whose units differ from each other. See [project.md](project.md) for the full
-method and [part 1](ARTICLE.md) for where this started.*
+repository, and `make verify` compares the published figures against a recorded
+baseline. The per-bit figures for SRAM and flash are standard cell structures,
+not outputs of this flow, and the microcontroller gate counts are vendor
+figures whose units differ from each other. See [project.md](project.md) for
+the full method and [part 1](ARTICLE.md) for where this started.*
