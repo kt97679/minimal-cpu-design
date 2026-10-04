@@ -1495,3 +1495,82 @@ named.
 The ceiling on that is bounded by the budget: the core is 21% of the machine, so
 even a perfect instruction set caps out around a fifth. But a fifth is larger
 than anything the last five phases found.
+
+---
+
+# Phase 12: evolving the instructions themselves
+
+Phase 11 concluded that genetic programming was worth one thing this project had
+not tried: evolving instruction *semantics* rather than selecting from
+operations I had named. Reverse subtract was the existence proof — it beat the
+hand design and only entered the pool because I deliberately added a primitive
+no accumulator machine uses.
+
+## The representation
+
+Each ALU instruction is an expression tree over the accumulator and the operand,
+built from `{+ - & | ^ ~ <<1 >>1}` and the constants `{0, 1, -1}`. Crossover
+swaps subtrees between machines; mutation rewrites one.
+
+Addressing and control stay structural — store, indexed store, index register,
+indexed load, and branches on zero, sign and always. That is the fix for the
+sparse-feasibility problem that made a plain genetic algorithm useless in phase
+11: with the structural instructions fixed, **8% of random genomes compile**
+against 1.5% of random instruction subsets.
+
+**Control:** a genome hand-built as load, add, subtract reproduces the phase 4
+machine exactly — 6,848 gates, core 1,332, 200 words, 10,345 cycles.
+
+## What it found
+
+Twenty individuals, fourteen generations, converged:
+
+```
+A0  acc <- (0 ^ m)                 = m          load
+A1  acc <- ((0 + m) | (-1 & 0))    = m          load again
+A2  acc <- ((m ^ m) + (-1 - m))    = ~m         load complement
+A3  acc <- (m + a)                 = a + m      add
+```
+
+**It threw away the subtractor.** Having `~m` and an adder, the compiler
+synthesises `d - s` as complement-and-add, and nothing in the machine subtracts.
+The core falls from 1,332 gates to 1,205; the program grows from 200 words to
+204; cycles rise from 10,345 to 10,515.
+
+That is the same discovery as reverse subtract, reached without being handed the
+primitive — which is the thing phase 11 said GP was for.
+
+## And the result is below the resolution of the measurement
+
+| machine | modelled gates | core | words | cycles |
+|---|---:|---:|---:|---:|
+| evolved, as found | **6,738** | 1,205 | 204 | 10,515 |
+| the same, pruned to three slots | 6,750 | 1,217 | 204 | 10,515 |
+| phase 7 reverse-subtract machine | 6,747 | 1,158 | 253 | 11,669 |
+| phase 4 hand design | 6,848 | 1,332 | 200 | 10,345 |
+
+The evolved machine is 1.6% below the hand design and **0.1% below the best
+previously found**. The cost model errs by about 3% against measurement. So the
+honest statement is not that GP found a better machine; it is that **GP found a
+machine indistinguishable from the best one, by an independent route.**
+
+The pruning test makes the resolution limit concrete. Slots A0 and A1 compute
+the same thing, so removing one should save gates. It costs 12. That is
+synthesis noise — a different opcode assignment lets ABC share differently — and
+it is the same order as the differences the search is now chasing.
+
+## Where that leaves the search
+
+Eleven phases of searching the instruction set have converged on a band between
+6,738 and 6,848 modelled gates, which is one and a half percent wide against a
+model with three percent error. The remaining differences are not resolvable by
+better search; they need a better cost function — per-candidate synthesised ROM
+and RAM rather than per-word averages, which costs a few seconds per individual
+instead of a few milliseconds.
+
+That is the real stopping condition, and it is worth stating as the result
+rather than as an apology. The instruction set stopped being the binding
+constraint around phase 6. Everything since has confirmed it from a new
+direction each time: a mechanical search, an architecture sweep, a stack
+machine, a practical workload, the working set, and now evolved semantics. The
+machine is memory, and the memory is the benchmark's.

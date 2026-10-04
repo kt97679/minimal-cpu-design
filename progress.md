@@ -1776,3 +1776,42 @@ both — which is why it was the only unambiguous win in eleven phases.
 evolving instruction *semantics* as expression trees, where reverse subtract is
 the existence proof that useful unnamed operations exist and no curated pool
 will contain them. Ceiling bounded by the core's 21% share.
+
+### 66. Phase 12: evolving instruction semantics
+
+Built the thing phase 11 identified as the only worthwhile GP target: evolve the
+ALU operations as expression trees over the accumulator and operand, from
+`{+ - & | ^ ~ <<1 >>1}` and `{0, 1, -1}`, with crossover swapping subtrees.
+Addressing and control stay structural, which is what makes genomes feasible by
+construction -- 8% of random genomes compile against 1.5% of random instruction
+subsets in phase 11.
+
+Control exact: a hand-built load/add/subtract genome reproduces the phase 4
+machine to the gate (6,848, core 1,332, 200 words, 10,345 cycles).
+
+**It threw away the subtractor.** Converged genome: two slots computing `m`
+(load), one computing `~m` as `(m^m)+(-1-m)`, one computing `a+m`. With a
+complement and an adder the compiler synthesises `d - s` itself, and nothing in
+the machine subtracts. Core 1,332 -> 1,205; words 200 -> 204; cycles 10,345 ->
+10,515.
+
+That is the same discovery as reverse subtract, reached without being handed the
+primitive -- which is exactly what phase 11 argued GP was for.
+
+**But the result is below the resolution of the cost model**, and saying so is
+the finding. Evolved 6,738; phase 7 RSB machine 6,747; phase 4 design 6,848. The
+model errs ~3% against measurement, so the first two are indistinguishable. The
+pruning test makes it concrete: slots A0 and A1 compute the same value, so
+removing one should save gates, and it costs 12 -- synthesis noise from a
+different opcode assignment, the same order as the differences being chased.
+
+Eleven phases of instruction-set search have converged into a band 1.5% wide
+against a model with 3% error. Further progress needs a better cost function,
+not a better search: per-candidate synthesised ROM and RAM instead of per-word
+averages, at seconds per individual rather than milliseconds.
+
+Recorded as the stopping condition rather than as an apology. The instruction
+set stopped being the binding constraint around phase 6, and six independent
+approaches since -- mechanical search, architecture sweep, stack machine,
+practical workload, working set, evolved semantics -- have each confirmed it
+from a different direction.
