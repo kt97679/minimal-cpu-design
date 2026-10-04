@@ -1375,3 +1375,123 @@ stops mattering" holds only for workloads with no repeated structure.
 The benchmark, not the method, was the limiting factor — which is the same
 lesson as phase 2's degenerate Fibonacci task, arriving a second time from a
 different direction.
+
+---
+
+# Phase 11: aiming at the working set, and why a GA was not the tool
+
+A reader asked whether genetic programming could find designs the directed
+searches never considered, using crossover and mutation. Three measured
+properties of this landscape argued against a plain genetic algorithm, and one
+argued for aiming any search somewhere else entirely.
+
+## Why a GA over instruction subsets is a poor fit
+
+**Feasibility is vanishingly sparse.** About 1.5% of random 16-instruction
+subsets of the 38-instruction pool can run the benchmark; under 0.1% at pool
+size 144. Crossing two working machines usually produces a broken one, because
+the halves do not each contain a store, a load and a branch that isolates the
+needed outcome class.
+
+**The landscape is nearly flat where it is feasible.** Every cheap-cluster
+design measured across phases 7 to 10 spans 6,959 to 8,848 gates — 27% end to
+end, standard deviation 7.8% of the mean, against a cost model that errs by
+about 3%. There is very little gradient for selection to climb.
+
+**The one feature that matters is a single bit.** Index-versus-no-index is worth
+7x, and hill climbing finds it on the first move. Crossover does not discover
+single-bit features; it recombines many-part structures.
+
+The representational fix is real, though, and worth recording for anyone trying
+this: **encode roles, not subsets.** A genome carrying a store slot, a load
+slot, an arithmetic slot and a branch slot per outcome class — with the choice
+*within* each slot evolved — keeps every individual feasible by construction.
+Then crossover swaps meaningful parts instead of producing rubble.
+
+## Where the money actually was
+
+The budget at the optimum is core 21%, program in ROM 13%, data RAM 65%. Any
+search over instruction sets is working on the small end. The data RAM is 23
+words: 16 of array that the benchmark fixes, and seven program scalars.
+
+Those seven are the only part an architecture can touch, and only one way: by
+holding them in registers instead of memory. The choice of *which* to hold is a
+subset problem with real epistasis, since `add v0,v1` only collapses to a single
+instruction when both operands are pinned. That is genuine genetic-algorithm
+territory — except there are seven scalars, so the space is 2^7 = 128 and can be
+enumerated exactly. For this axis a GA would be solving a problem that fits in a
+loop.
+
+## The first answer was wrong, and the way it was wrong is the finding
+
+Enumerated with cores taken from the existing per-register-opcode generator, the
+answer came out at 4,786 gates against 6,917 — minus 31% on gates and minus 58%
+on cycles, far outside the 12% ceiling I had predicted from the budget. A result
+that much better than its own ceiling is a reason to check the measurement
+rather than celebrate.
+
+The cores were wrong. With per-register opcodes, eight registers needs 38
+opcodes and a 4-bit opcode field allows 16, so the generator had silently
+truncated the instruction set — and the set it synthesised for R=8 contained no
+store instruction at all. The 967-gate "core" described a machine that cannot
+write memory.
+
+The correct encoding puts the register in a *field*: `{op[3:0], reg[2:0],
+addr[8:0]}`, selecting into a register file. Synthesised honestly:
+
+| registers | core gates | cost per added register |
+|---:|---:|---:|
+| 1 | 1,468 | — |
+| 2 | 1,874 | 406 |
+| 4 | 2,481 | 304 |
+| 8 | 3,721 | 310 |
+
+**An addressable register costs 300 to 400 gates. A word of this RAM costs 200.**
+Moving a variable from memory into a register makes the machine bigger, not
+smaller.
+
+That is the answer to the working-set question, and it reverses the first one
+completely:
+
+| pinned to registers | gates | cycles |
+|---|---:|---:|
+| **none** | **7,053** | 10,402 |
+| v2 | 7,151 | 8,942 |
+| v0 | 7,173 | 9,773 |
+| all seven | 7,540 | 4,384 |
+
+The earlier figure of about 130 gates for a 16-bit register, from phase 2, was
+for a *dedicated* register — an accumulator wired to one place. An element of an
+addressable file needs a decoder, a read multiplexer and per-register write
+enables, and costs two to three times as much. I had carried the dedicated-
+register figure into a problem about addressable ones.
+
+## What registers are actually for
+
+They are not an area optimisation, they are a speed one. Pinning three variables
+cuts cycles from 10,402 to about 6,900 for roughly 600 extra gates, which is 32%
+better on area x time even though it is 6% worse on area alone.
+
+That is worth stating plainly because it is the clean version of a thing this
+project keeps rediscovering: **every structure here is cheap on one axis and
+expensive on the other, and which one you are optimising decides the
+architecture.** Registers buy time with area. ROM buys area with
+inflexibility. The index register buys both, which is why it was the only
+unambiguous win in eleven phases.
+
+## So: is genetic programming worth it here?
+
+Not for instruction subsets, for the three measured reasons above. Not for the
+working set, which turned out to have 128 possibilities and a negative answer.
+
+It would be worth it for one thing this project has not tried: evolving the
+*semantics* of instructions as expression trees over `(acc, mem, constants)`
+rather than selecting from operations I named. Reverse subtract is the existence
+proof — it beat the hand design, and it only entered the pool because I added a
+primitive no accumulator machine uses. There is no reason to think it is the
+only such operation, and no human-curated pool will contain the ones nobody has
+named.
+
+The ceiling on that is bounded by the budget: the core is 21% of the machine, so
+even a perfect instruction set caps out around a fifth. But a fifth is larger
+than anything the last five phases found.

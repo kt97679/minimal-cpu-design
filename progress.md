@@ -1723,3 +1723,56 @@ rounds and a reader review:
 Not adopted: the venue-specific mechanics (Habr's cut, КДПВ sizing, hub limits)
 belong in a per-venue note rather than in a general prompt, which is why `07`
 asks for the list rather than containing one.
+
+### 65. Phase 11: genetic programming, aimed at the working set
+
+Asked whether GP could find designs the directed searches missed, then asked to
+aim it at the working set rather than at instruction sets.
+
+**Why a plain GA is a poor fit**, measured rather than asserted: feasibility is
+~1.5% of random 16-subsets and under 0.1% at pool 144, so crossover mostly
+produces broken machines; the feasible landscape spans 27% with a standard
+deviation of 7.8% against a model that errs by 3%, so there is almost no
+gradient; and the dominant feature is a single bit that hill climbing finds on
+its first move. Recorded the representational fix that would make a GA viable —
+encode roles with evolved contents, so every individual is feasible by
+construction.
+
+**Aimed at the working set instead.** The budget is 65% data RAM, of which 16
+words are benchmark-fixed array and 7 are program scalars. Holding scalars in
+registers is the only architectural lever on them, and which subset to hold is
+epistatic (`add v0,v1` collapses only if both are pinned) — but with seven
+scalars the space is 2^7 = 128 and enumerates exactly. A GA would have been
+solving a problem that fits in a loop.
+
+**The first answer was wrong by 31%, and catching it is the real content.**
+Enumerating with cores from the existing generator gave 4,786 against 6,917 —
+minus 31% gates, minus 58% cycles, far outside the 12% ceiling I had predicted.
+Too good relative to its own ceiling, so I checked the measurement.
+
+The generator assigns one opcode per (operation, register). Eight registers
+needs 38 opcodes; the 4-bit field allows 16; the set was silently truncated. The
+R=8 "core" of 967 gates contained **no store instruction** — a machine that
+cannot write memory.
+
+Rebuilt with the register in a field, `{op[3:0], reg[2:0], addr[8:0]}`, and
+synthesised honestly: R=1 1,468, R=2 1,874, R=4 2,481, R=8 3,721. **An
+addressable register costs 300-400 gates; a RAM word costs 200.** Moving a
+variable into a register makes the machine bigger. Best on gates is no pinning
+at all, 7,053.
+
+My 130-gates-per-register figure came from phase 2, where a register was a
+*dedicated* accumulator. An element of an addressable file needs a decoder, a
+read mux and per-register write enables, and costs two to three times more. I
+carried a dedicated-register number into a problem about addressable ones, and
+the error flattered the hypothesis I was testing.
+
+**What registers are actually for.** Pinning three scalars costs ~600 gates and
+saves 3,500 cycles: 6% worse on area, 32% better on area x time. Registers buy
+time with area, ROM buys area with inflexibility, and the index register bought
+both — which is why it was the only unambiguous win in eleven phases.
+
+**Verdict on GP**: not for subsets, not for the working set. Worth it for
+evolving instruction *semantics* as expression trees, where reverse subtract is
+the existence proof that useful unnamed operations exist and no curated pool
+will contain them. Ceiling bounded by the core's 21% share.
