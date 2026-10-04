@@ -2055,3 +2055,26 @@ to remember:
 The convention is written into `README.md` as well, because the prompt notes a
 session that handed over a wrongly named bundle with the convention sitting in a
 file it had not read.
+
+### 71. A repeat slip, and the check for it
+
+Making the handoff commit, the message was passed as `git commit -m "..."` with
+double quotes, and it contained the target name in backticks. Inside double
+quotes the shell treats backticks as command substitution, so it **ran the
+target** while composing the message — on a tree that was still dirty, which is
+why the run printed both a refusal and a success. The literal text was replaced
+by the command's output in the committed message.
+
+This is the second time this session: an earlier `python3 -c "..."` with
+backticks in the Russian text silently ate a code span, leaving `«»` in the
+article. Prompt `15-repeat-slip` says the second occurrence is when to
+mechanise rather than resolve to be careful, so:
+
+* every commit message and every multi-line text payload from here goes through
+  a heredoc with a quoted delimiter (`<<'EOF'`), never through `-m "..."` or
+  `-c "..."`. A quoted delimiter disables substitution entirely;
+* the slip class to search the log for is "backticks inside double quotes",
+  not the particular file it damaged each time.
+
+The amended commit shows the damage was cosmetic here. The earlier one was not:
+it left a visibly broken sentence in a published article until someone read it.
