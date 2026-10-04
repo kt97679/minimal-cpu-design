@@ -437,14 +437,34 @@ after that is one memory port, one word per instruction, 16-bit data and the
 three-state skeleton — a stack machine or a pipelined one cannot be reached
 from here.
 
+One more search, with the operations themselves evolved rather than chosen.
+Each instruction became an expression tree over the accumulator and the
+operand, grown from `{+ - & | ^ ~ shift}` and the constants `{0, 1, -1}`, with
+crossover swapping subtrees between machines. Given no named operation at all,
+it converged on a machine with **no subtractor**: load, load-complement, add,
+and the compiler working out `d - s` as complement-and-add for itself. On gates
+that ties the reverse-subtract machine — 6,738 against 6,747, inside the
+model's error — so the honest claim is not that it won, but that it reached the
+same answer from nothing, where the earlier search needed me to put reverse
+subtract into the pool by hand. Once the clock was measured it turned out to be
+the fastest machine here, 8.6% quicker in real time than the one I designed,
+because a shorter datapath clocks faster.
+
+That is also where searching stopped paying. Eleven rounds of it converged into
+a band one and a half percent wide against a cost model that errs by three, and
+one test makes the floor concrete: two of the evolved slots compute the same
+value, so deleting one ought to save gates, and it costs twelve. What is left
+needs a better measurement, not a better search.
+
 So the honest answer to the objection is that it was correct. A machine built
 around reverse subtract, with no add, no subtract and no unconditional jump,
 resembles nothing in the historical record, and it is smaller than the design I
 reached by recognising a PDP-8. What remains mine is the skeleton — one
 accumulator, memory operands, a 16-bit word — and the two array-access
-strategies the search chooses between. That is a search of an instruction space
-inside an architecture I picked, and the next thing to randomise is the
-architecture.
+strategies the search chooses between. What remains mine after all of it is
+narrower than where this chapter started: one memory port, one word per
+instruction, 16-bit data and the three-state skeleton — each now a stated
+assumption with a reason attached, rather than an unexamined default.
 
 ## Part 2
 
