@@ -173,6 +173,19 @@ What remains biased is stated in `project.md`: the skeleton, the two
 array-access strategies, the benchmark, and the fact that twelve restarts is
 sampling rather than exhaustion.
 
+## Handing the work over
+
+    make handoff
+
+writes a bundle named `oisc-vs-accumulator-claude-iter<commits>-<UTC>.bundle`,
+lists the refs it carries, and then tests that it can be received — it verifies,
+clones to the same commit, and is fetched from, because a clone can succeed on a
+bundle that `git pull` cannot use. The iteration number is the commit count, so
+a folder of these sorts into the order they were made.
+
+**Future sessions: use that script rather than calling `git bundle` by hand.**
+The convention lives here so it is found before the first handoff, not after.
+
 ## Checking the numbers
 
     make verify

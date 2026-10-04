@@ -80,3 +80,9 @@ record-baseline:
 	python3 sw/baseline.py --record
 
 .PHONY: verify record-baseline
+
+# Make a handoff bundle, named by convention, and test that it can be received.
+handoff:
+	sh sw/handoff.sh
+
+.PHONY: handoff

@@ -2024,3 +2024,34 @@ elsewhere` (no remote reporters), `10-price-before-refactor` (already followed,
 in the 12% ceiling priced before building the GP). `17-checks-outlive-a-turn`
 describes precisely the failure hit in phase 7, where a backgrounded search died
 between turns and its results were lost; the fix is recorded for next time.
+
+### 70. Bundle naming and the handoff check
+
+Prompt `07-git-handoff` records a project that handed over bundles for 368
+iterations before anyone tried to pull one, because `git bundle create FILE
+master` writes no `HEAD` and `git pull FILE` asks for it. Checked this project's
+bundles: they do carry `HEAD`, because `git bundle create --all` supplies it in
+this git version — which is luck rather than intent, and the prompt's point is
+that nobody had tested the deliverable.
+
+The naming was the real gap. Every handover this session overwrote a single
+`oisc-vs-accumulator.bundle`, so nothing said which state it carried or when it
+was made.
+
+Added `sw/handoff.sh` and `make handoff`, following the prompt's advice that the
+best form is a script in the repository rather than a convention a session has
+to remember:
+
+* names it `oisc-vs-accumulator-claude-iter<commits>-<UTC yyyymmdd-hhmmss>.bundle`,
+  so a folder of them sorts into the order they were made and each says which
+  state it carries;
+* names the refs explicitly — `HEAD`, the branch, `--tags` — rather than relying
+  on `--all`, whose HEAD behaviour has varied between git versions;
+* refuses to run on a dirty tree;
+* and tests the deliverable: verifies, clones and compares HEAD, checks `HEAD`
+  appears in `git ls-remote`, and fetches from it, because a clone can succeed
+  on a bundle that `git pull` cannot use.
+
+The convention is written into `README.md` as well, because the prompt notes a
+session that handed over a wrongly named bundle with the convention sitting in a
+file it had not read.
