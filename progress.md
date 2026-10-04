@@ -2266,3 +2266,37 @@ Reconciled a figure I had computed two ways across phases: 5,144 is the measured
 23-word latch file (2,663) plus core, ROM and glue; 5,201 came from scaling the
 registered-read RAM block by 116/196 and double-counts the read register. The
 articles use 5,144 and the step-by-step derivation is printed beside it.
+
+### 77. Phase 19: a second cost model, in discrete components
+
+Asked which logic family and which design would be cheapest if the machine were
+built from transistors, diodes and resistors rather than NAND gates. Verified
+the RTL gate structure against sources rather than recalling it: a NOR is one
+transistor and one base resistor per input plus one pull-up, and the reason
+discrete machines used RTL is that transistors were the most expensive part.
+
+**Family.** RTL costs $201 and 20,377 parts; DTL $214 and 26,871; CMOS $374 and
+12,690. So RTL if buying parts, CMOS if the constraint is placing them — CMOS
+needs a third of the components and costs nearly double, because a p-channel
+MOSFET is 2.5x an NPN. DTL loses on both and is bought for fan-out and noise
+margin, which this model does not price.
+
+**The project's central ratio gets stronger, not weaker.** A stored bit against
+a ROM bit is 40x by count and 52x by cost in discrete RTL, against 46x in the
+gate model, 27x with latches, and 6x on real silicon. A diode matrix is the
+cheapest storage ever built and a discrete flip-flop among the dearest.
+
+**But the balance inside the machine inverts, and that is the real finding.**
+Core $92 (46%), data RAM $77 (38%), ROM $28 (14%) — where the gate model had RAM
+at 65% and core at 21%. The cause is the multiplexer: half the RAM's cost in
+gates, and under $4 as a diode matrix, so the RAM collapses to its latches.
+
+That reverses this project's own advice about where to look. Twelve phases of
+instruction-set search were arguing over 21% of a gate-built machine; in a
+discrete build they would be arguing over 46%, and phase 12's evolved core,
+20% smaller, would be worth about 9% of the build instead of a fraction of a
+percent.
+
+Flagged as weaker-footed than the rest of the project: textbook structures and
+catalogue prices, nothing measured, and no pricing of the buffering RTL's
+fan-out would actually need.

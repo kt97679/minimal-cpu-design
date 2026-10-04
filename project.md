@@ -2003,3 +2003,94 @@ The useful general form: **search where the space is large and the mechanism is
 unknown; measure where it is small and the mechanism is understood.** Four
 phases of memory work ended with the plainest possible design, and the value was
 in the measurements that ruled the alternatives out.
+
+---
+
+# Phase 19: the same machine built from transistors, diodes and resistors
+
+Asked what changes if the machine is built from discrete parts rather than NAND
+gates, and which logic family is cheapest. This is a second cost model over the
+same designs, and it moves things the gate model could not see.
+
+The structures below are textbook, stated as a convention the way the six-NAND
+flip-flop was, not measured here. Prices are bulk hobbyist figures.
+
+## One gate, one stored bit, one ROM bit
+
+| family | a 2-input gate | parts | cost |
+|---|---|---:|---:|
+| RTL — NOR, one transistor and one base resistor per input, one pull-up | 2T 3R | 5 | $0.052 |
+| DTL — diode AND into a transistor inverter | 3D 1T 3R | 7 | $0.056 |
+| CMOS — discrete MOSFETs | 2 n-ch 2 p-ch | 4 | $0.160 |
+
+| family | a gated D latch | parts | cost |
+|---|---|---:|---:|
+| RTL | 8T 12R | 20 | $0.208 |
+| DTL | 12D 4T 12R | 28 | $0.224 |
+| CMOS | 3 n-ch 3 p-ch | 6 | $0.240 |
+
+And a ROM bit, in any family, is a diode where the bit is one and nothing where
+it is zero: **half a component on average, $0.004.**
+
+## Which family
+
+| | parts | cost |
+|---|---:|---:|
+| RTL | 20,377 | **$201** |
+| DTL | 26,871 | $214 |
+| CMOS | **12,690** | $374 |
+
+**RTL if you are buying the parts; CMOS if the constraint is how many parts you
+can physically place.** CMOS needs a third of the components and costs nearly
+twice as much, because a p-channel MOSFET is two and a half times the price of
+an NPN transistor. DTL loses on both counts and is only worth it for the fan-out
+and noise margin that this model does not price.
+
+That ordering is also the historical one: discrete machines were built from RTL
+and DTL precisely because, as the Wikipedia article on RTL puts it, in circuits
+using discrete components the transistors were the most expensive part.
+
+## The finding this project is about gets stronger
+
+A stored bit against a ROM bit:
+
+| | count ratio | cost ratio |
+|---|---:|---:|
+| gate model, flip-flops | 46x | — |
+| gate model, latches | 27x | — |
+| **discrete RTL** | **40x** | **52x** |
+| real silicon, SRAM against flash | 6x | — |
+
+So the thing the index register buys — permission to keep the program in
+read-only storage — is worth *more* with discrete parts than with gates, and far
+more than on silicon. A diode matrix is the cheapest storage anyone has ever
+built, and a discrete flip-flop is among the most expensive.
+
+## But the balance inside the machine inverts
+
+| RTL, ten-instruction machine | parts | cost | share |
+|---|---:|---:|---:|
+| processor core | 8,875 | $92.30 | 46% |
+| data RAM, 23 words | 7,360 | $76.54 | 38% |
+| program ROM, 212 words | 3,620 | $28.05 | 14% |
+
+In the gate model the data RAM was 65% of the machine and the core 21%. Here the
+core is the largest item. The reason is the multiplexer: in gates it was half
+the cost of the RAM, and in a discrete build it is a diode matrix — 368 diodes
+and a handful of resistors, under $4 — so the RAM collapses to just its latches.
+
+**That reverses the project's own conclusion about where to look.** Twelve
+phases of instruction-set search were fighting over 21% of a gate-built machine.
+In a discrete build they would be fighting over 46%, and the phase 12 result —
+the evolved machine with no subtractor, whose core is 20% smaller — would be
+worth about 9% of the whole build rather than the fraction of a percent it was
+worth in gates.
+
+## What this model does not price
+
+RTL's fan-out is poor and its noise margin is small, so a real build needs
+buffering that is not counted here; this is the main reason DTL was worth its
+extra parts. Diode matrices need pull-downs and are slow to rise, which at the
+sizes above would matter. And nothing here is measured — these are textbook
+structures and catalogue prices, which is a weaker footing than the rest of this
+project and should be read as such.
