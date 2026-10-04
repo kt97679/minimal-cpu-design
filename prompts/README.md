@@ -24,8 +24,18 @@ describe are ones any measurement or write-up project can reproduce.
 | [03-audit-tooling](03-audit-tooling.md) | before reporting any measured result | measurement tools that quietly favour the answer you already have |
 | [04-expert-review](04-expert-review.md) | when a technical write-up is nearly done | overclaiming; unstated modelling assumptions |
 | [05-reader-review](05-reader-review.md) | after the expert review passes | unreadable structure, repetition, no problem statement |
-| [07-audience-research](07-audience-research.md) | before drafting for a named venue | writing for an imagined reader; burying the point; zero images |
 | [06-handling-review](06-handling-review.md) | when review feedback arrives | accepting wrong criticism, rejecting right criticism, silent drift |
+| [07-git-handoff](07-git-handoff.md) | when a session ends or work changes hands | knowledge that lived only in the conversation; a deliverable nobody tested |
+| [08-run-it-elsewhere](08-run-it-elsewhere.md) | before calling a suite portable | a harness that measures its own environment |
+| [09-baseline-discipline](09-baseline-discipline.md) | when a recorded value changes | a check quietly converted into a record of whatever happened last |
+| [10-price-before-refactor](10-price-before-refactor.md) | before restructuring working code | paying for a prize nobody measured; a proxy metric mistaken for time |
+| [11-report-from-elsewhere](11-report-from-elsewhere.md) | when writing or reading a remote failure report | a round trip spent asking what the output should have said |
+| [12-progress-log](12-progress-log.md) | before trying an approach, and when any attempt ends | re-deriving and re-paying for an idea that was already tried and rejected |
+| [13-severity-first](13-severity-first.md) | when working a list of failures | a segfault weighed the same as a reworded message; crashes found only by accident |
+| [14-audience-research](14-audience-research.md) | before drafting for a venue, and before choosing where to publish | writing for an imagined reader; a venue's known failure modes met only after publishing (added at Iteration 553 from kt97679/minimal-cpu-design, where it is 07) |
+| [15-repeat-slip](15-repeat-slip.md) | when fixing a mistake made before | the same slip, fixed by care each time and recurring anyway - three times in a week (added at Iteration 631) |
+| [16-fail-before-fix](16-fail-before-fix.md) | before claiming a fix or adding a regression test | a test that passes proves nothing unless it failed before; a claimed fix for a flaw that never existed (Iteration 631) |
+| [17-checks-outlive-a-turn](17-checks-outlive-a-turn.md) | when starting a check longer than one call or turn | a cut-off log read as a pass; a commit one step from being made on it (Iteration 631) |
 
 ## The two that mattered most
 

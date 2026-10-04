@@ -4,6 +4,7 @@ it in a reference emulator and in Icarus Verilog on the generated Verilog, and
 compare the resulting memory."""
 import sys, subprocess; sys.path.insert(0, 'sw')
 import autosearch as A
+from sweep import TMPX, BUILD
 
 ISET = ['JN', 'JZ', 'LDX_D', 'LD_D', 'LD_X', 'ST_D', 'ST_X', 'SUB_D']
 order = sorted(ISET); OPC = {n: i for i, n in enumerate(order)}
@@ -48,8 +49,8 @@ def emu(mem, steps=500):
     return mem
 
 ref = emu(mem)
-open('/tmp/gen.v', 'w').write(A.gen_rtl(set(ISET), aw=8))
-open('/tmp/img.hex', 'w').write('\n'.join('%04x' % w for w in mem) + '\n')
+open(f'{BUILD}/gen.v', 'w').write(A.gen_rtl(set(ISET), aw=8))
+open(f'{BUILD}/img.hex', 'w').write('\n'.join('%04x' % w for w in mem) + '\n')
 tb = """
 `timescale 1ns/1ps
 module tb;
@@ -62,7 +63,7 @@ module tb;
                    .mdin(rd),.ifetch(ifq));
   integer i;
   initial begin
-    $readmemh("/tmp/img.hex", mem);
+    $readmemh("IMGPATH", mem);
     @(negedge clk); rst=0;
     repeat (400) @(posedge clk);
     for (i=40; i<53; i=i+1) $display("%0d %0d", i, mem[i]);
@@ -70,9 +71,9 @@ module tb;
   end
 endmodule
 """
-open('/tmp/tb.v', 'w').write(tb)
-subprocess.run(['iverilog', '-g2012', '-o', '/tmp/sim', '/tmp/tb.v', '/tmp/gen.v'], check=True)
-out = subprocess.run(['/tmp/sim'], capture_output=True, text=True).stdout
+open(f'{BUILD}/tb.v', 'w').write(tb.replace('IMGPATH', f'{BUILD}/img.hex'))
+subprocess.run(['iverilog', '-g2012', '-o', f'{TMPX}/sim', f'{BUILD}/tb.v', f'{BUILD}/gen.v'], check=True)
+out = subprocess.run([f'{TMPX}/sim'], capture_output=True, text=True).stdout
 rtl = {int(l.split()[0]): int(l.split()[1]) for l in out.strip().split('\n')
        if l and l[0].isdigit()}
 print('%-6s %-10s %-10s %s' % ('addr', 'emulator', 'RTL', ''))

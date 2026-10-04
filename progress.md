@@ -1,3 +1,80 @@
+## Index
+
+Appended per iteration. Entries that say "no" are the ones that earn their
+keep: they stop a later session re-deriving an idea that was already priced
+and rejected.
+
+1. Framing the question
+2. Choosing and installing tools
+3. Software first: `sw/asm.py`
+4. RTL: `rtl/acc_cpu.v`, `rtl/subleq_cpu.v`
+5. Testbench and simulation
+6. Gate counting — three iterations to get it right
+7. Program store as gates
+8. Real timing, not just cycles
+9. Biases audit
+10. Repository setup
+11. Git
+12. Realising the benchmark was measuring the wrong thing
+13. One CPU, instruction groups behind ifdefs
+14. SUBLEQ needs a readable port
+15. Bugs
+16. First sweep: the curve turns up at 12 instructions
+17. The ROM lever, which turned out to be bigger than the ISA
+18. The degenerate result
+19. Write each benchmark once, not once per machine
+20. Choosing algorithms that these machines can actually express
+21. The four-instruction machine cannot run this suite
+22. Bugs
+23. Results, and the surprise
+24. Where the budget ends up
+25. Reading before building
+26. Sizing the prize before building
+27. The counting bug
+28. Three levers
+29. Testing the narrow-datapath hypothesis
+30. Result
+31. Building Jones's Ultimate RISC
+32. Both halves of my phase 4 prediction were wrong
+33. What the MOVE machine actually pays for
+34. Final standing
+35. The objection, and why it lands
+36. Giving SUBLEQ the same amenity
+37. Result: the objection costs the phase 5 conclusion
+38. The finding that replaces the old one
+39. Design document
+40. Article
+41. Review prompt
+42. External review of the article, and what was accepted
+43. Prose pass, and a silently failed edit
+44. Second external review: three real errors
+45. Third review: half of it hit a stale prompt
+46. Fourth review: the best one, and it cost the most
+47. Fifth review: two accepted, one refuted by arithmetic
+48. The four-instruction machine was never introduced
+49. The objection
+50. What was built
+51. Result
+52. Verification
+53. What is still biased
+54. The search's winner does not survive measurement
+55. Not a truly random search — and what fixing that changed
+56. Prompt library extracted from the postmortem
+57. Reworking the prompts for a shared library
+58. Phase 8: the architecture in the search
+59. Phase 9: the stack machine, and the crossover
+60. Phase 10: a practical workload, and the two instructions it demands
+61. Deciding what of phases 9-10 belongs in the article
+62. Splitting the article in two
+63. Deep parity audit of part 1 after the split
+64. An audience-research document from another project, and what it found here
+65. Phase 11: genetic programming, aimed at the working set
+66. Phase 12: evolving instruction semantics
+67. Phase 13: measuring the clock, after eleven phases of assuming it
+68. Phase 14: the hybrid store, and the collapse of the headline figure
+
+---
+
 # Progress log
 
 Chronological record of how this project was built, including tool installation,
@@ -1902,3 +1979,48 @@ cost meaningless. Found by noticing a memory system with no gates in it.
 Not measured: the overlay adds a comparator and a mux leg to the memory read
 path, and phase 13 showed path changes of this kind are worth ~10% of the clock.
 The 15% area figure has an unmeasured timing penalty attached.
+
+### 69. Merging a grown prompt library back, and what it caught
+
+Pointed at `kt97679/relf`, whose `prompts/` is this project's library grown from
+seven to seventeen by a shell/Forth project. Merged wholesale: `01-06` shared
+(three with improvements, notably `03` gaining "absence of output is a
+measurement too"), my `07-audience-research` renumbered to `14`, and ten new
+ones from the other project's failures.
+
+Applied the new ones here. Three found real problems:
+
+**`08-run-it-elsewhere`.** The project had only ever run in one container, and
+that container had already lost its toolchain once this session. A clean clone
+builds, but three sources hardcoded `/tmp`. Fixing that exposed a second
+assumption: `build/` is on a `noexec` mount here, so compiled simulators cannot
+live there either. Resolved by splitting the two — data artifacts in `build/`,
+compiled executables in `tempfile.gettempdir()`, which honours `TMPDIR`. Also
+documented the Python 3.9 floor (dict union in `autosearch.py`).
+
+My first attempt at that fix was careless in exactly the way `03` warns about: a
+blanket regex produced `ff'{BUILD}/...'` and, worse, injected an f-string marker
+into a *Verilog* literal that is not an f-string, which would have emitted
+`f"{BUILD}/img.hex"` into the testbench. Caught by running it, not by reading
+the diff.
+
+**`09-baseline-discipline`.** The articles publish about forty numbers and
+nothing checked that they still reproduce. Added `sw/baseline.py`, `BASELINE.txt`
+and `make verify`: fourteen strict figures compared exactly, five reported ones
+(Fmax) printed but never failed on, following the prompt's rule that
+machine-dependent values are recorded rather than compared. Tool versions are
+recorded alongside.
+
+**`16-fail-before-fix`.** Applied to the baseline itself: a check that has only
+ever passed proves nothing. Corrupted one recorded figure, confirmed the check
+exits 1 and names it, restored, confirmed it passes. That pairing is what makes
+`make verify` worth having.
+
+**`12-progress-log`.** This log had reached 68 entries with no index — the exact
+shape the prompt describes as searchable but unreadable. Added one.
+
+Not applicable here: `13-severity-first` (no failure corpus), `11-report-from-
+elsewhere` (no remote reporters), `10-price-before-refactor` (already followed,
+in the 12% ceiling priced before building the GP). `17-checks-outlive-a-turn`
+describes precisely the failure hit in phase 7, where a backgrounded search died
+between turns and its results were lost; the fix is recorded for next time.

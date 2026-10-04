@@ -24,8 +24,18 @@ fetched lazily when their trigger conditions are met.
 | `03-audit-tooling` | report a measured number produced by tooling you wrote, *or* report a result that agrees with what you expected | no figure came from your own tooling |
 | `04-expert-review` | publish a technical write-up whose claims have settled | the claims are still moving |
 | `05-reader-review` | publish, after `04` has passed | the claims are still moving |
-| `07-audience-research` | **draft anything for a named venue or community** | the artefact is internal with one known reader |
 | `06-handling-review` | act on any review feedback | never skip |
+| `07-git-handoff` | end a session, or hand work to another machine | the work leaves no artifact |
+| `08-run-it-elsewhere` | call a suite, build or benchmark green | the environment ships with the product |
+| `09-baseline-discipline` | re-record a recorded value that changed | nothing is recorded - then ask why not |
+| `10-price-before-refactor` | restructure something that works, on the strength of a profile | the change is required for correctness |
+| `11-report-from-elsewhere` | write output someone on another machine will paste back, or read one | the reader has the machine |
+| `12-progress-log` | try an approach, or finish an attempt that worked, failed or was reverted | nothing is being tried |
+| `13-severity-first` | work through a list of failures, or decide whether a pass count is the goal | one failure, already understood |
+| `14-audience-research` | draft a write-up for a specific venue, or choose where to publish it (upstream `07-audience-research`; renumbered here, where 07 was already `07-git-handoff`) | the artefact is internal, with one known reader |
+| `15-repeat-slip` | fix a mistake you have made before | the mistake is new - then log it well |
+| `16-fail-before-fix` | claim a fix, or add a regression test | the change claims to change nothing |
+| `17-checks-outlive-a-turn` | start a check that may run longer than one call or turn | it finishes well inside one call |
 
 ## The one that is hardest to self-apply
 
@@ -39,6 +49,22 @@ were conventional" without a table above it, you have skipped the prompt.
 The same applies to the human side: `05` is worth far more run on an actual
 reader than on a model asked to simulate one, because a simulated reader is
 more patient and better informed than any real one.
+
+## Two families
+
+`01`-`06` came from a hardware-measurement project and are about
+choosing what to measure, searching rather than recalling, and
+publishing. `07`-`13` came from a self-hosting shell written over four
+hundred sessions: `07`-`11` when it was handed to someone with two
+ordinary machines, `12` and `13` later, from keeping its log honest and
+from working its failures in the right order, and `15`-`17` later still,
+from building a native compiler for it: repeated slips, a claimed fix
+that had never failed, and checks longer than a turn. They are about work that
+OUTLIVES a session and software that runs somewhere other than where it
+was written. That family's failures are cheaper to hit and easier to
+miss: nine of the eleven faults the handover found were in the test
+harness rather than the program, and every one was something the
+original environment never varied.
 
 ## Provenance
 

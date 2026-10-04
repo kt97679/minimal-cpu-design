@@ -69,3 +69,14 @@ phase4:
 
 clean:
 	rm -rf build
+
+# Recompute the figures the articles publish and compare them against
+# BASELINE.txt. Strict figures must match exactly; Fmax and wall-clock are
+# printed for comparison by eye because they depend on the machine.
+verify:
+	python3 sw/baseline.py
+
+record-baseline:
+	python3 sw/baseline.py --record
+
+.PHONY: verify record-baseline

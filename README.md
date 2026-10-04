@@ -173,6 +173,17 @@ What remains biased is stated in `project.md`: the skeleton, the two
 array-access strategies, the benchmark, and the fact that twelve restarts is
 sampling rather than exhaustion.
 
+## Checking the numbers
+
+    make verify
+
+recomputes the figures the articles publish and compares them against
+`BASELINE.txt`. Gate, cycle and word counts are compared exactly; Fmax and
+wall-clock are printed for comparison by eye, because they depend on the
+place-and-route seed and the machine. `make record-baseline` rewrites it — and
+every changed line should get a sentence saying what moved it before that is
+done.
+
 ## Phase 10: what the benchmark could not see
 
 A workload shaped like real firmware — scan a buffer, CRC-16 it, format the
@@ -249,7 +260,7 @@ was about having no way to touch an array.
 ## Reproducing
 
 ```sh
-apt-get install iverilog yosys nextpnr-ice40
+apt-get install iverilog yosys nextpnr-ice40   # Python 3.9+ (dict union)
 make          # assemble both programs, simulate, verify output, count gates
 make fmax     # place & route both designs, report Fmax across 4 seeds
 make sweep    # phase 2: build and measure all seven design points

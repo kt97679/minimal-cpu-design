@@ -18,7 +18,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from sweep import ROOT, BUILD, aw, yosys_nand, ram_cost, write_rom, harvard_cost
+from sweep import TMPX, ROOT, BUILD, aw, yosys_nand, ram_cost, write_rom, harvard_cost
 import suite as _suite
 _suite.POOLING = False        # phase 3: one word per variable
 from suite import DESIGNS, build, MASK
@@ -34,7 +34,7 @@ def hexfile(mem, path):
 
 
 def run_rtl(key, n, defs, nout):
-    exe = f'/tmp/p3_{key}'
+    exe = f'{TMPX}/p3_{key}'
     fam = {'sq': 'sq', 'move': 'move', 'sqp': 'sqp'}.get(key, 'acc')
     flag = {'sq': '-DDUT_SUBLEQ', 'move': '-DDUT_MOVE', 'acc': '-DDUT_ACC',
             'sqp': '-DDUT_SUBLEQP'}[fam]

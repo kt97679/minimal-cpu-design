@@ -1,0 +1,32 @@
+# Recorded baseline. STRICT figures are compared exactly; a change is a
+# finding until a sentence here explains it. REPORTED figures depend on
+# the machine and are printed for comparison by eye, never failed on.
+
+[tools]
+iverilog                     Icarus Verilog version 12.0 (stable) ()
+nextpnr                      "nextpnr-ice40" -- Next Generation Place and Route (Version 
+python                       3.12.3
+yosys                        Yosys 0.33 (git sha1 2584903a060)
+
+[strict]
+core.a10                     1334
+core.a7                      1120
+core.rsb                     1158
+firmware.checksum            56
+firmware.inlined_ops         139
+firmware.outputs             20
+firmware.virtual_ops         72
+hybrid.overlay_0             5625
+hybrid.overlay_5             6830
+ram.136_words                26600
+ram.gates_per_word           196
+suite.checksum               27063
+suite.outputs                123
+suite.virtual_ops            89
+
+[reported]
+fmax.RSB_machine             84.1 MHz (sd 2.0, n=6)
+fmax.a10_phase_4_winner      83.1 MHz (sd 1.9, n=6)
+fmax.a7_no_index             93.8 MHz (sd 2.3, n=6)
+fmax.evolved_no_subtractor   92.5 MHz (sd 2.2, n=6)
+fmax.stack_depth_3           89.2 MHz (sd 2.7, n=6)

@@ -18,6 +18,10 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUILD = os.path.join(ROOT, 'build')
 os.makedirs(BUILD, exist_ok=True)
+# compiled simulators need an executable filesystem; build/ may be
+# on a noexec mount, so they go to the system temp dir (honours TMPDIR)
+import tempfile
+TMPX = tempfile.gettempdir()
 MASK = 0xFFFF
 N_OUT = 100
 N_ITER = 50
@@ -321,7 +325,7 @@ SRC['v2'] = SRC['v3'] = SRC['v5'] = SRC['v1']
 
 def run_rtl(key, n, defs=()):
     """Simulate the real RTL; returns (cycles to 100th output, mismatches)."""
-    exe = f'/tmp/sim_{key}'
+    exe = f'{TMPX}/sim_{key}'
     cmd = (['iverilog', '-g2012', '-o', exe, f'-D{DUTFLAG[key]}',
             f'-DNWORDS={max(n, 1)}', f'-DAWIDTH={aw(max(n, 1))}',
             f'-DHEXFILE="{BUILD}/{key}.hex"'] + ['-D' + d for d in defs] +
