@@ -1720,3 +1720,82 @@ showed that path-length changes of this kind are worth 10% of the clock. The
 hybrid store's Fmax has not been measured. Given phase 13, the expectation should
 be that it costs some, and the honest position is that the 15% area figure has an
 unmeasured timing penalty attached to it.
+
+---
+
+# Phase 15: searching the memory, where the gates actually are
+
+Twelve phases searched instruction sets and converged into a band one and a half
+percent wide. The budget had been saying why that was the wrong place to look
+since phase 1, and decomposing the data RAM says it precisely:
+
+```
+23 words x 16 bits, gate-built
+  flip-flops       2,304 gates   50%   irreducible: 368 bits of state
+  decode and mux   2,293 gates   50%   a design choice
+```
+
+**2,293 gates is 32% of the whole machine** — against the 1.5% the
+instruction-set searches were arguing over. Everything below is synthesised, the
+same way every other figure here was.
+
+| organisation | memory | whole machine | cycles | area x time |
+|---|---:|---:|---:|---:|
+| flat, registered read (current) | 4,597 | 7,078 | 10,333 | 73 |
+| flat, combinational read | 4,501 | 6,982 | 10,333 | **72** |
+| split: scalars and array separately | 4,612 | 7,093 | 10,333 | 73 |
+| banked x2 / x4 / x8 | 4,839–4,851 | — | — | worse |
+| **scalars flat, array in a ring** | **3,850** | **6,331** | 12,883 | 82 |
+| everything in a ring | 3,421 | 5,902 | 55,730 | 329 |
+
+## Three results
+
+**Registering the read output costs 96 gates and buys nothing.** A combinational
+read drops the 16-flip-flop output register. It is free, and it is 1.4% of the
+machine. I have not retrofitted it: every published figure in this project was
+measured with the registered version, and changing it would invalidate all of
+them for 1.4%. It is recorded here as measured and left alone, which is the
+honest trade.
+
+**Banking and splitting do not help.** A two-level mux needs its own pipeline
+register, and that costs more than the narrower mux saves. Splitting the scalars
+from the array — which reads like it should help, since the array is only
+addressed through the index register and the scalars only directly — comes out
+15 gates worse. Both are the kind of idea that sounds right and measures wrong.
+
+**A circulating store is the largest single win in the project.** Put the
+sixteen array words in a ring that shifts past one port, with no decoder and no
+mux at all, and the memory falls from 4,597 gates to 3,850: the whole machine
+goes from 7,078 to **6,331, a 10.6% reduction**. Nothing found by searching
+instruction sets across twelve phases came within a third of that.
+
+It costs time, because an access waits for its word to come round: on the
+benchmark's 340 array accesses, at an average wait of 7.5 cycles, 12,883 cycles
+against 10,333 — 25% more. Putting *everything* in a ring saves 17% of the
+machine and costs 5.4x the time, which is the wrong end of the same trade.
+
+## What is measured and what is not
+
+The areas are synthesised. The cycle figures are computed from the benchmark's
+measured access counts and an average wait of (N-1)/2, not simulated.
+
+**The machine that uses a ring has not been built.** A ring memory is not
+functionally transparent the way the hybrid program store of phase 14 was: it
+needs a `ready` line and the processor needs to stall on it, which is a change
+to the state machine and costs gates I have not counted. Treat the 10.6% as the
+memory's own measurement plus an unbuilt CPU change, not as a working machine —
+and note that the last time this project reasoned about an unbuilt design, it
+got both the area and the timing wrong in opposite directions.
+
+The ring's Fmax is also unmeasured. Its critical path is flip-flop to flip-flop
+with no decoder in it, so phase 13's logic suggests it would clock *faster* than
+the mux it replaces, which would make the time cost smaller than the cycle count
+implies. That is a guess until it is measured.
+
+## Why this was the last place looked
+
+The project spent twelve phases on 21% of the machine and one on the 65%. The
+reason is worth naming: the instruction set is the part that looks like
+architecture. Memory organisation looks like implementation, so it was treated
+as a constant — and it was the only constant in the whole project that was
+never questioned until the search had exhausted everything else.

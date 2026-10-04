@@ -2078,3 +2078,47 @@ mechanise rather than resolve to be careful, so:
 
 The amended commit shows the damage was cosmetic here. The earlier one was not:
 it left a visibly broken sentence in a published article until someone read it.
+
+### 72. Phase 15: the GP approach aimed at memory
+
+Asked to point the search at memory design. Priced the prize first, as `10`
+requires: the 23-word data RAM is 4,597 gates, of which 2,304 is flip-flops that
+368 bits of state require and **2,293 is decode and mux — 32% of the whole
+machine**, against the 1.5% band twelve phases of instruction-set search had
+converged into.
+
+Generated and synthesised eight organisations:
+
+```
+flat, registered read (current)   4597   baseline
+flat, combinational read          4501   -2.1%, free
+split: scalars + array            4612   +0.3%, no help
+banked x2 / x4 / x8          4839-4851   +5%, worse
+scalars flat + array in a ring    3850   -16%, +25% cycles
+everything in a ring              3421   -26%, +440% cycles
+```
+
+**Three findings.** Registering the read output costs 96 gates and buys nothing;
+free, 1.4% of the machine, and deliberately *not* retrofitted, because every
+published figure was measured with the registered version and changing it would
+invalidate all of them for 1.4%. Banking and splitting both measure worse than
+they read -- a two-level mux needs its own pipeline register, which costs more
+than the narrower mux saves.
+
+And the circulating store is **the largest single win in the project**: the
+array in a ring with no decoder and no mux takes the machine from 7,078 to
+6,331, −10.6%, for 25% more cycles. Nothing from twelve phases of
+instruction-set search came within a third of that.
+
+**Stated as not built**: unlike phase 14's overlay, a ring is not functionally
+transparent -- it needs a `ready` line and a processor that stalls on it, which
+is an uncounted change to the state machine. The cycle figures are computed from
+measured access counts and a (N-1)/2 wait, not simulated. And the ring's Fmax is
+unmeasured, though its critical path is flip-flop to flip-flop with no decoder,
+so phase 13 suggests it would clock faster, making the time cost smaller than
+the cycles imply.
+
+The uncomfortable observation: twelve phases went on 21% of the machine and one
+on the 65%. The instruction set is the part that *looks* like architecture;
+memory organisation looks like implementation, so it sat as the one unquestioned
+constant until the search had exhausted everything else.
