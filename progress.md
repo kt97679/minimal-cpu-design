@@ -1815,3 +1815,47 @@ set stopped being the binding constraint around phase 6, and six independent
 approaches since -- mechanical search, architecture sweep, stack machine,
 practical workload, working set, evolved semantics -- have each confirmed it
 from a different direction.
+
+### 67. Phase 13: measuring the clock, after eleven phases of assuming it
+
+Fmax had been measured once, in phase 1, on two designs, and found a 28% spread.
+Everything since compared cycle counts, which is a proxy for time only if the
+clock period is constant. The index register puts an adder in the address path,
+so there was a specific reason to doubt it.
+
+Measured on iCE40 HX8K via nextpnr, six seeds each. Seed spread ~6.5%, sd ~2.4%,
+so differences under ~5% are not real.
+
+```
+7 instructions, no index   93.8 +/- 2.3 MHz   11013 cy   117.4 us
+phase-4 winner (index)     83.1 +/- 1.9       10333      124.4
+phase-7 RSB machine        84.1 +/- 2.0       11669      138.7
+stack machine, depth 3     89.2 +/- 2.7       11121      124.6
+phase-12 evolved           92.5 +/- 2.2       10515      113.7
+```
+
+**The index register costs 11.5% of the clock**, 8.8 sigma. The hypothesis was
+right. It reframes rather than overturns the central finding: the index register
+buys 7x area and costs 11.5% time -- an area optimisation that costs speed,
+which is the opposite of how index registers are usually sold.
+
+**Three conclusions change sign.** The seven-instruction machine is 6.6% slower
+by cycles and 5.6% *faster* by wall-clock. The stack machine was reported 7.6%
+slower in phase 9 and is level (+0.2%, inside noise) -- it has no address adder
+and recovers on clock what it loses on cycles, so "loses on area by 11%" stands
+but "and is slower" does not. The phase-12 evolved machine is 1.8% slower by
+cycles and 8.6% faster by wall-clock, because dropping the subtractor shortens
+the critical path.
+
+That makes the phase-12 evolved machine the best design the project has
+produced: tied on gates with the whole band, fastest in real time. GP found it
+and the metric in use hid most of its advantage.
+
+Gate counts are unaffected -- those were measured. What is affected is every
+"smaller but slower" statement, and the corrected version is usually milder,
+because designs that save gates by removing datapath tend to gain clock.
+
+Third time a conclusion rested on the measurement rather than the thing
+measured, after the degenerate benchmark and the benchmark blind to logic
+instructions. Worth promoting to the prompt library: check what your metric
+cannot see before trusting what it says.

@@ -1574,3 +1574,78 @@ constraint around phase 6. Everything since has confirmed it from a new
 direction each time: a mechanical search, an architecture sweep, a stack
 machine, a practical workload, the working set, and now evolved semantics. The
 machine is memory, and the memory is the benchmark's.
+
+---
+
+# Phase 13: the clock period, which eleven phases assumed was constant
+
+Fmax was measured once in this project, in phase 1, for two designs, and found a
+28% spread. Every phase since compared machines by cycle count. That is only a
+proxy for time if the clock period is the same across them, and there was a
+specific reason to doubt it: the index register — the central finding of the
+whole project — puts an adder in the *address* path, which is exactly what costs
+Fmax.
+
+Each machine wrapped with a memory, synthesised for an iCE40 HX8K, placed and
+routed with nextpnr across six seeds. Seed spread is about 6.5%, standard
+deviation about 2.4%, so differences below roughly 5% are not real.
+
+| machine | Fmax (6 seeds) | cycles | wall-clock | by time | by cycles |
+|---|---:|---:|---:|---:|---:|
+| 7 instructions, no index | 93.8 ± 2.3 | 11,013 | 117.4 µs | **−5.6%** | +6.6% |
+| phase-4 winner (index) | 83.1 ± 1.9 | 10,333 | 124.4 µs | 0.0% | 0.0% |
+| phase-7 RSB machine | 84.1 ± 2.0 | 11,669 | 138.7 µs | +11.5% | +12.9% |
+| stack machine, depth 3 | 89.2 ± 2.7 | 11,121 | 124.6 µs | **+0.2%** | +7.6% |
+| phase-12 evolved | 92.5 ± 2.2 | 10,515 | 113.7 µs | **−8.6%** | +1.8% |
+
+## The index register costs 11.5% of the clock
+
+93.8 MHz without it, 83.1 with — an 8.8-sigma difference, far outside seed
+noise. The hypothesis was right: the address-path adder lands on the critical
+path.
+
+This reframes the project's central finding rather than overturning it. The
+index register buys a **7x reduction in area** and costs **11.5% of the clock**.
+It is an area optimisation that costs time, which is the opposite of how index
+registers are usually sold.
+
+## Three conclusions change sign
+
+**The seven-instruction machine.** By cycles it is 6.6% slower than the phase-4
+winner. By wall-clock it is 5.6% *faster*. The whole of phase 2's ladder was
+scored on cycles.
+
+**The stack machine.** Phase 9 reported it 7.6% slower on cycles. On wall-clock
+it is level — +0.2%, inside the noise. Its datapath has no address adder at all,
+and it recovers on clock exactly what it loses on cycles. The conclusion that it
+loses on *area* stands at 11%; the conclusion that it is also slower does not.
+
+**The evolved machine.** Phase 12 reported it 1.8% slower on cycles and called
+the gate difference below measurement resolution. On wall-clock it is 8.6%
+*faster*, because throwing away the subtractor shortens the critical path:
+92.5 MHz against 83.1. That is a 4.6-sigma difference and the clearest result in
+the phase.
+
+So the phase-12 machine is the best design the project has produced: tied on
+gates with everything else in the band, and the fastest of the lot in real time.
+Genetic programming found it, and the metric in use at the time hid most of its
+advantage.
+
+## What this says about the preceding eleven phases
+
+Every area-times-time figure computed from phase 2 onward used cycles as if the
+clock were constant. It is not, and the spread between these five machines is
+13%, which is larger than most of the differences those figures were used to
+argue about.
+
+The gate counts are unaffected — they were measured, not assumed. What is
+affected is every statement of the form "smaller but slower", and there are
+several. The corrected version is usually milder: the designs that save gates by
+removing datapath tend to *gain* clock, so the time penalty is smaller than the
+cycle count suggests, and twice it reverses.
+
+This is the third time in this project that a conclusion turned out to rest on
+the measurement rather than on the thing measured — after the benchmark that
+admitted a hardwired answer, and the benchmark that could not see logic
+instructions. The pattern is consistent enough to be the most useful thing here:
+**check what your metric cannot see, before trusting what it says.**
