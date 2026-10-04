@@ -130,7 +130,10 @@ into two groups with nothing in between:
       7,078 - 8,848                     47,295 - 164,783
 ```
 
-Every design measured, by total gates, on a logarithmic scale. `o` = can index an array without rewriting its own code; `x` = cannot.
+Every design measured, by total gates, on a logarithmic scale. `o` = can index
+an array without rewriting its own code; `x` = cannot. The gap is a property of
+the memory map, not of the architectures: with a hybrid store the `x` group
+moves to 8,141, which is the last part of this chapter.
 
 ("Operations" means distinct primitive operations — opcodes plus memory-mapped
 port behaviours — not instruction words. Chapter 5 explains why instruction
@@ -220,15 +223,37 @@ expensive almost by definition. The model makes it true *that*
 self-modification costs; the measurements establish *how much*.
 
 *The all-or-nothing program store is an assumption, and the one I would attack
-first.* The addresses a self-modifying program patches are fixed at assembly
-time — `P` above is a link-time constant — so the store could be split into ROM
-plus a handful of individually decoded writable words, five of them for the
-seven-instruction machine. At my own per-word figures that lands near 8,000
-gates, inside the cheap group. I have not built it, and the last time I
-reasoned about an unbuilt design here I got both its area and its timing wrong
-in opposite directions, so treat it as a sketch. What survives regardless: the
-index register removes the need for a writable window altogether, and 6.7x is
-what the simple one-ROM-one-RAM map costs you for lacking it.
+*The all-or-nothing program store was an assumption, it was the one I would
+have attacked first, and when I finally built it, it took most of the 6.7x
+away.* The addresses a self-modifying program patches are fixed at assembly
+time — `P` above is a link-time constant — so the store can be ROM plus a
+handful of individually decoded writable words: five for the seven-instruction
+machine, one per indexed access site. Each costs about 220 gates — a register,
+a comparator and a mux leg — against 200 for a word of ordinary RAM. Measured,
+that machine comes to **8,141 gates against the ten-instruction machine's
+7,078: a ratio of 1.15, not 6.7.**
+
+So the mechanism survives and the magnitude does not. Writable storage still
+costs about 220 gates a word against 4.3 for read-only, and that is still the
+largest ratio in this project. What does not survive is the idea that a machine
+which rewrites its own code must pay for a writable *program store*. It pays
+for the words it actually writes, and there are five. The index register
+removes those five plus about 35 words of program, and is worth around 15% of a
+7,000-gate machine — still the largest single instruction-set effect measured
+anywhere here, but 15% rather than 570%. **The 6.7x is what a coarse memory map
+costs, and a coarse memory map is a design choice rather than a law.**
+
+One more thing the earlier chapters could not see. Every comparison above
+counts *cycles*, which is a proxy for time only if the clock period is the same
+across machines, and it is not: the index register puts an adder in the address
+path, and measured on an FPGA across six place-and-route seeds it costs **11.5%
+of the clock** — 93.8 MHz without it against 83.1 with, far outside the 6.5%
+seed spread. So the index register buys a large area reduction and costs time,
+which is the opposite of how index registers are usually sold. Two conclusions
+elsewhere in this project change sign once wall-clock replaces cycles, and the
+one that mattered most is that the machine a search evolved in chapter 6 — the
+one with no subtractor — is 1.8% slower by cycles and 8.6% faster in real time,
+because a shorter datapath clocks faster.
 
 *The 46x is partly the technology.* Real SRAM is roughly six transistors per bit
 rather than six gates, and mask ROM roughly one, so with real memory macros the
