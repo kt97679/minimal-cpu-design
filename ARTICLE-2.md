@@ -130,6 +130,7 @@ comparison says what a decade of features costs, not that ARM was careless.
 | storage | gate-equivalents per bit |
 |---|---:|
 | flip-flop RAM, as built in part 1 | 12.5 |
+| latch RAM, the cheapest gate-built form | 7.25 |
 | 6T SRAM cell | 1.5 |
 | 1T flash or mask ROM | 0.25 |
 | the synthesised ROM in part 1 | 0.27 |
@@ -140,7 +141,7 @@ Two things fall out of that table.
 synthesised ROM is within 10% of a flash cell. That half of the model needed no
 correction.
 
-**The writable-to-read-only ratio collapses from 47x to 6x.** Part 1's central
+**The writable-to-read-only ratio collapses from 47x to 6x — or from 29x, if the gate-built side is the latch file rather than the flip-flop one.** Part 1's central
 claim — that an index register is not an optimisation but a permission to put
 the program in cheap memory — survives in direction and loses most of its
 magnitude. On real silicon it is worth about 6x, not 47x.

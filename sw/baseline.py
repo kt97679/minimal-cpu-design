@@ -74,6 +74,31 @@ def strict():
     for k, s in sets.items():
         v[k] = A.core_gates(set(s))
 
+    # the cheapest storage element, phase 16: a register file does not need
+    # edge-triggered cells
+    import subprocess as sp, re as re2
+    lv = """module m (input wire [4:0] addr, input wire we, input wire [15:0] din,
+        output wire [15:0] dout);
+        reg [15:0] mem [0:22];
+        integer i;
+        always @* begin
+          for (i=0;i<23;i=i+1) if (we && addr==i[4:0]) mem[i] = din;
+        end
+        assign dout = mem[addr];
+    endmodule
+"""
+    from sweep import BUILD as _B
+    open(f'{_B}/bl_latch.v','w').write(lv)
+    o = sp.run(['yosys','-p', f'read_verilog {_B}/bl_latch.v\n hierarchy -top m\n'
+                ' flatten\n proc; opt; memory; opt\n techmap; opt -full\n'
+                ' dfflegalize -cell $_DLATCH_P_ 0\n abc -g NAND\n opt_clean\n stat'],
+               capture_output=True, text=True).stdout
+    tl = o[o.rfind('Printing statistics'):]
+    gg = lambda c: (int(re2.search(rf'\$_{c}_\s+(\d+)', tl).group(1))
+                    if re2.search(rf'\$_{c}_\s+(\d+)', tl) else 0)
+    v['latch.23_words'] = gg('NAND') + gg('NOT') + 4 * gg('DLATCH_P')
+    v['latch.gates_per_word'] = round(v['latch.23_words'] / 23)
+
     import hybrid
     image = [(i * 2654435761) & 0xFFFF for i in range(247)]
     for n in (0, 5):

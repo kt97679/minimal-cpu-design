@@ -2237,3 +2237,32 @@ gates, so the probe was wrong, not the design.
 The general form worth keeping: search where the space is large and the
 mechanism unknown; measure where it is small and the mechanism understood. GP
 earned its place in phase 12 on instruction semantics and does not here.
+
+### 76. Articles updated with the best design
+
+Folded phase 16 into both articles, since it changes the project's most-quoted
+number and produces its smallest machine.
+
+**Chapter 1** now says the 196 gates a word is for a register file of
+edge-triggered flip-flops — the element every figure in the article was measured
+with — and that the floor is 116, with the mechanism: only 40% of the saving is
+the cheaper cell, the rest is a multiplexer the cheaper cell makes unnecessary.
+That belonged there rather than in chapter 4, because 196 is the number the
+whole argument rests on and it is conditional on a choice nobody had examined.
+
+**Chapter 4** gains "The cheapest version of it", stepping from the published
+7,078 to 6,982 (combinational read) to 5,144 (latch cells): 27% smaller with no
+cycle cost, and explicitly not restated through the rest of the article, because
+every compared design uses the same memory and the change scales them together.
+
+**Part 2** gains the latch row in the per-bit table — 7.25 against 12.5 for
+flip-flops and 1.5 for 6T SRAM — so the writable-to-read-only ratio is given as
+47x for flip-flops, 29x for latches and 6x on real silicon.
+
+Also added `latch.23_words` and `latch.gates_per_word` to the baseline, so the
+best design's figures are checked by `make verify` like the rest.
+
+Reconciled a figure I had computed two ways across phases: 5,144 is the measured
+23-word latch file (2,663) plus core, ROM and glue; 5,201 came from scaling the
+registered-read RAM block by 116/196 and double-counts the read register. The
+articles use 5,144 and the step-by-step derivation is printed beside it.

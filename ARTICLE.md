@@ -46,6 +46,18 @@ means building its memory out of gates too, and the synthesised RAM works out
 to about 196 NAND-equivalents per 16-bit word. (That is from a 136-word store;
 `synth/gates_ram.sh` reproduces it for any size.)
 
+That 196 is for a register file of edge-triggered flip-flops, which is what
+every figure in this article was measured with. It is not the floor. An
+addressed memory writes one word at a time with the address held, so the cells
+need not be edge-triggered, and a gated D latch is four NAND gates where a
+flip-flop is six: **116 gates a word instead of 196**. Only 40% of that saving
+is the cheaper cell. The rest is a multiplexer the cheaper cell makes
+unnecessary — an edge-triggered bit must be fed its own value back when it is
+not being written, one two-to-one mux per bit, 368 of them, and a latch simply
+holds by not being enabled. Chapter 4 gives the machine both ways; everything
+between here and there uses the flip-flop figure, because every design in the
+comparison does.
+
 The processor of that first four-instruction machine was 806 gates against
 27,406 for the whole design — three percent. That machine wrote its results
 into a 100-word array, which I later replaced with an output port precisely
@@ -308,6 +320,26 @@ Where the 7,078 gates go. Each character of the bar is about 118 gates.
 | entire program, in ROM | 912 |
 | address decode and glue | 60 |
 | **total** | **7,078** |
+
+### The cheapest version of it
+
+The budget above is what every comparison in this article was measured against.
+Swapping the data RAM for the latch file of chapter 1, and dropping the output
+register on its read, gives the same machine for less:
+
+```
+measured as published                      7,078
+combinational read instead of registered    6,982   -96
+gated D latches instead of flip-flops       5,144   -1,838
+```
+
+**5,144 gates, 27% smaller, with no cycle cost.** Nothing in this article is
+restated in those terms, because every design in the comparison uses the same
+memory and the change scales them together — the ranking is identical and only
+the absolute sizes move. It is the largest single reduction found anywhere in
+the work, and it came from the one component that had been treated as a fixed
+cost rather than a design.
+
 
 ### Ancestors
 

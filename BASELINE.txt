@@ -18,6 +18,8 @@ firmware.outputs             20
 firmware.virtual_ops         72
 hybrid.overlay_0             5625
 hybrid.overlay_5             6830
+latch.23_words               2663
+latch.gates_per_word         116
 ram.136_words                26600
 ram.gates_per_word           196
 suite.checksum               27063
