@@ -1799,3 +1799,87 @@ reason is worth naming: the instruction set is the part that looks like
 architecture. Memory organisation looks like implementation, so it was treated
 as a constant — and it was the only constant in the whole project that was
 never questioned until the search had exhausted everything else.
+
+---
+
+# Phase 16: the storage element, which fifteen phases took as given
+
+Every figure in this project counts a stored bit as a positive-edge-triggered D
+flip-flop, six NAND gates. That convention is correct for a flip-flop. What was
+never examined is whether a register file needs flip-flops at all.
+
+It does not. An addressed RAM writes one word at a time, with the address stable
+for the whole write, so there is no shift race and the cells can be
+level-sensitive. A gated D latch is four NAND gates.
+
+| 23 words x 16 bits, both with combinational read | combinational | cells | gates | per word |
+|---|---:|---:|---:|---:|
+| edge-triggered D flip-flop, 6 NAND | 2,293 | 368 | 4,501 | 196 |
+| gated D latch, 4 NAND | 1,191 | 368 | **2,663** | **116** |
+
+**1,838 gates, 26% of the whole machine, with no cycle cost at all.** Stable
+across sizes: 116 gates a word at 23, 136 and 256 words, against 194–196 for
+flip-flops.
+
+## Only 40% of that is the storage element
+
+The decomposition is the part worth keeping:
+
+```
+storage element    368 bits x (6 - 4)   =   736 gates
+hold path          2,293 - 1,191        = 1,102 gates
+```
+
+An edge-triggered cell has to be told its own value when it is not being
+written: `D = write ? din : Q`, a two-to-one multiplexer per bit, 368 of them. A
+latch does not — it holds by not being enabled. **The majority of the saving is
+not the cheaper cell, it is the multiplexer the cheaper cell makes unnecessary.**
+
+That is why the combinational half of the RAM halves too, which is not what you
+would predict from "4 gates instead of 6".
+
+## What it changes, and what it does not
+
+The ROM-to-RAM ratio falls from 45x to 27x. The mechanism the articles rest on
+survives at a smaller magnitude, exactly as it did under phase 14's hybrid
+store.
+
+Scaling each machine's RAM portion by the measured 116/196:
+
+| | flip-flop RAM | latch RAM |
+|---|---:|---:|
+| ten-instruction machine | 7,078 | 5,201 |
+| seven-instruction, all-RAM store | 49,477 | 29,817 |
+| seven-instruction, hybrid store | 8,141 | 5,785 |
+| gap between the first two | 7.0x | 5.7x |
+
+(The 7.0x here and the 6.7x quoted elsewhere differ because that one compares
+against the cheapest machine on the other side rather than this one.)
+
+For the ten-instruction machine specifically, taking both changes in order:
+
+```
+measured, registered read, flip-flops      7,078
+combinational read instead                 6,982   -96
+latch cells, no hold multiplexer           5,144   -1,838
+```
+
+So this is a large absolute result and a modest relative one — the best shape a
+late finding can have, since every comparison in the project survives while
+every machine in it gets about a quarter smaller.
+
+## Not retrofitted, and why
+
+Every published figure was measured with flip-flops, and the comparisons are
+internally consistent. Re-measuring all of them would change forty numbers to
+make each machine 26% smaller and leave every conclusion as it was. The figures
+stay as measured, with the convention stated and this phase recorded beside it.
+
+## Not verified
+
+A latch-based file needs a clean write-enable: a glitch on the decode while the
+enable is high corrupts a word, which is why synchronous design prefers
+flip-flops and why this is a real engineering trade rather than free money. The
+three-state machine here holds its address stable for the whole write cycle, so
+it ought to be sound — but "ought to be sound" is not a simulation, and this has
+not had one.

@@ -2122,3 +2122,47 @@ The uncomfortable observation: twelve phases went on 21% of the machine and one
 on the 65%. The instruction set is the part that *looks* like architecture;
 memory organisation looks like implementation, so it sat as the one unquestioned
 constant until the search had exhausted everything else.
+
+### 73. Phase 16: the storage element, taken as given for fifteen phases
+
+Asked whether RAM could use something simpler than D flip-flops. It can, and it
+is the largest single result in the project.
+
+Every figure here counts a stored bit as a positive-edge-triggered D flip-flop,
+six NAND gates. That is right for a flip-flop; what was never examined is
+whether a register file needs flip-flops. It does not — an addressed RAM writes
+one word at a time with the address stable, so there is no shift race and the
+cells can be level-sensitive. A gated D latch is four NAND gates.
+
+Measured like for like, both with combinational read:
+
+```
+edge-triggered D flip-flop, 6 NAND   2293 comb + 368 cells = 4501   196/word
+gated D latch, 4 NAND                1191 comb + 368 cells = 2663   116/word
+```
+
+**1,838 gates, 26% of the machine, with no cycle cost.** Stable at 116 gates a
+word across 23, 136 and 256 words.
+
+The decomposition is the part worth keeping: only 736 of the saving is the
+cheaper cell. The other 1,102 is a multiplexer the cheaper cell makes
+unnecessary — an edge-triggered cell must be told its own value when it is not
+written (`D = write ? din : Q`, one 2:1 mux per bit, 368 of them), while a latch
+holds by not being enabled. That is why the combinational half of the RAM halves
+too, which "4 gates instead of 6" would not predict.
+
+Rankings are unaffected, because every design here uses the same RAM: the
+ten-instruction machine goes 7,078 -> 5,201, the all-RAM seven-instruction one
+49,477 -> 29,817, and the gap between them 7.0x -> 5.7x. Large in absolute
+terms, modest in relative ones.
+
+Caught while writing it up: I had put 5,144 in the prose and 5,238 in a check
+script, having computed them two different ways -- one scaling the measured RAM
+block, the other using the per-word figure. Recomputed by a single method and
+corrected before committing. Exactly what `03` means by decomposing before
+diagnosing.
+
+Not retrofitted: forty published figures would move to make every machine 26%
+smaller and leave every conclusion as it was. Not verified either -- a
+latch-based file needs a glitch-free write enable, which the three-state machine
+ought to give it, and "ought to" is not a simulation.
