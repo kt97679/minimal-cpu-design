@@ -189,6 +189,46 @@ remaining ninety-seven is set by how much RAM your application needs. The
 interesting question stops being which instructions the machine has and becomes
 what the memory is for.
 
+### The other end: no chips at all
+
+A microcontroller is one direction away from a gate-built machine. The other is
+building it from discrete transistors, diodes and resistors, which is what
+anyone doing this on a bench actually faces.
+
+Three families, costing the same ten-instruction machine: RTL at about $201 of
+parts, DTL at $214, CMOS at $374. **RTL if you are buying the parts, CMOS if
+the constraint is placing them** — discrete CMOS needs a third of the
+components and costs nearly twice as much, because a p-channel MOSFET is two
+and a half times the price of an NPN. That is also the historical ordering, and
+for the same reason: in a discrete build the transistors are the expensive
+part.
+
+What matters here is the ratio this article turns on. A gated D latch in RTL is
+eight transistors and twelve resistors. A ROM bit is a diode where the bit is
+one and nothing where it is zero — half a component. **Fifty-two to one by
+cost.**
+
+| writable against read-only | ratio |
+|---|---:|
+| discrete RTL | 52x |
+| gate-built, flip-flops (part 1) | 47x |
+| gate-built, latches | 29x |
+| real silicon, SRAM against flash | 6x |
+
+So the gate-built model of part 1 is not an arbitrary toy sitting off to one
+side. It is a middle point between two real technologies, and the finding holds
+across all three with the magnitude varying by an order of magnitude.
+
+But the balance inside the machine inverts again, and in the opposite direction
+from the microcontroller. A diode-matrix multiplexer costs under four dollars,
+so the data RAM collapses to just its latches and the processor becomes the
+largest item: 46% of a discrete build against 21% of a gate-built one. Which
+means the instruction-set work that was worth almost nothing in part 1 would be
+worth about 9% of a machine built on a bench.
+
+These figures are textbook structures and catalogue prices rather than
+measurements, and should be read a notch below everything else here.
+
 ## 7. What survives
 
 Three things transfer out of both parts.
@@ -215,6 +255,8 @@ to notice than an arithmetic error.
 search machinery and a Makefile that reproduces every number are in this
 repository, and `make verify` compares the published figures against a recorded
 baseline. The per-bit figures for SRAM and flash are standard cell structures,
-not outputs of this flow, and the microcontroller gate counts are vendor
-figures whose units differ from each other. See [project.md](project.md) for
-the full method and [part 1](ARTICLE.md) for where this started.*
+not outputs of this flow; the microcontroller gate counts are vendor figures
+whose units differ from each other; and the discrete-component section is
+textbook structures and catalogue prices throughout, with nothing in it
+measured. See [project.md](project.md) for the full method and [part
+1](ARTICLE.md) for where this started.*

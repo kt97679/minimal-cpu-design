@@ -2300,3 +2300,40 @@ percent.
 Flagged as weaker-footed than the rest of the project: textbook structures and
 catalogue prices, nothing measured, and no pricing of the buffering RTL's
 fan-out would actually need.
+
+### 78. Phase 19 in the articles, selectively
+
+Asked whether the discrete-component findings belong in the articles. Applied
+the standing test -- a finding earns space if it changes a claim already there --
+and two of the three do.
+
+**In, as a new subsection of part 2 chapter 6**, which is already the chapter
+about what changes when the technology does:
+
+* *The ratio.* A gated RTL D latch is 20 components against half a component for
+  a ROM bit: 52x by cost. Added to the existing per-bit table, which now reads
+  52x discrete, 47x gate-built with flip-flops, 29x with latches, 6x on silicon.
+  This makes part 1's model look like a middle point between two real
+  technologies rather than an arbitrary toy, which is a better argument than the
+  one the chapter was making with silicon alone.
+* *The inversion, in the opposite direction.* A diode-matrix multiplexer costs
+  under four dollars, so the data RAM collapses to its latches and the processor
+  becomes 46% of a discrete build against 21% of a gate-built one. The chapter
+  already had the balance inverting towards a microcontroller; it now inverts
+  both ways, and the instruction-set work that was worth almost nothing in part 1
+  would be worth about 9% on a bench.
+
+**Out:** the logic-family comparison itself -- RTL $201, DTL $214, CMOS $374 --
+appears only as the one sentence needed to say which family the figures assume.
+It is a new topic rather than a changed claim, and it stays in `project.md`.
+
+The provenance footer now names the discrete section as textbook structures and
+catalogue prices with nothing measured, alongside the existing notes about SRAM
+cell figures and vendor gate counts.
+
+Part 2 is 2,103 words, up from 1,729. Part 1 is untouched at 4,227, which is
+where it should stay.
+
+The figure-parity check flagged 52, 47 and 29 as mismatched again; it is the
+`x` against `×` notation difference recorded in entry 63, and normalising the
+notation clears it. Third time that check has cried wolf.
