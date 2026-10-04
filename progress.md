@@ -1859,3 +1859,46 @@ Third time a conclusion rested on the measurement rather than the thing
 measured, after the degenerate benchmark and the benchmark blind to logic
 instructions. Worth promoting to the prompt library: check what your metric
 cannot see before trusting what it says.
+
+### 68. Phase 14: the hybrid store, and the collapse of the headline figure
+
+Built the thing phase 4 flagged as the assumption it would attack first and then
+declined to build: a program store that is ROM plus N individually decoded
+writable words, since the addresses a self-modifying program patches are
+link-time constants.
+
+Measured marginal cost of a writable overlay word: ~206-241 gates across one to
+twenty of them, against 200 for an ordinary RAM word. A 16-bit register, a
+comparator and a mux leg.
+
+```
+seven-instruction machine, which must rewrite its own code
+  monolithic all-RAM store      47,295
+  hybrid, five writable words    8,141
+  ten-instruction, pure ROM      7,078
+```
+
+**The 6.7x gap becomes 1.15x.** The sketch in phase 4 estimated 8,000 and the
+measurement is 8,141, which is the only satisfying part of a result that
+demolishes the project's headline number.
+
+The mechanism survives intact -- writable storage costs ~220 gates a word
+against 4.3 for read-only, still the largest ratio in the project. What does not
+survive is the claim that self-modification requires paying for a writable
+*program store*. It requires paying for the words actually written, and there
+are five.
+
+Restated defensibly: self-modifying code costs one expensive word per patch
+site, about 1,100 gates for five; the index register removes those plus 35 words
+of program, worth ~15% of a 7,000-gate machine, still the largest single
+instruction-set effect measured anywhere here; and 6.7x is what a coarse memory
+map costs, which is a design choice rather than a law.
+
+One bug caught: with zero overlay words the generated Verilog was syntactically
+invalid (an empty ternary chain), and the synthesis silently reported zero gates
+rather than failing. The baseline row read 0 and would have made every marginal
+cost meaningless. Found by noticing a memory system with no gates in it.
+
+Not measured: the overlay adds a comparator and a mux leg to the memory read
+path, and phase 13 showed path changes of this kind are worth ~10% of the clock.
+The 15% area figure has an unmeasured timing penalty attached.

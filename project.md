@@ -1649,3 +1649,74 @@ the measurement rather than on the thing measured — after the benchmark that
 admitted a hardwired answer, and the benchmark that could not see logic
 instructions. The pattern is consistent enough to be the most useful thing here:
 **check what your metric cannot see, before trusting what it says.**
+
+---
+
+# Phase 14: the hybrid program store, measured at last
+
+Phase 4 named this as the weakest assumption in the project and declined to
+build it:
+
+> The addresses a self-modifying program patches are fixed at assembly time, so
+> the store could be split into ROM plus a handful of individually decoded
+> writable words — five of them for the seven-instruction machine. At my own
+> per-word figures that lands near 8,000 gates, inside the cheap group. I have
+> not built it, so treat it as a sketch.
+
+Built now. The overlay is N 16-bit registers, each with an address comparator,
+multiplexed into the read path ahead of the ROM. Functionally it is
+indistinguishable from RAM at those addresses, so the program verified in phase
+3 behaves identically; only the area changes.
+
+| writable words | memory gates | total | marginal cost per word |
+|---:|---:|---:|---:|
+| 0 (pure ROM) | 5,625 | 6,936 | — |
+| 1 | 5,831 | 7,142 | 206 |
+| 2 | 6,080 | 7,391 | 227 |
+| **5** | **6,830** | **8,141** | **241** |
+| 10 | 7,860 | 9,171 | 223 |
+| 20 | 9,920 | 11,231 | 214 |
+
+A writable overlay word costs about 220 gates — a 16-bit register plus a
+comparator plus a mux leg, against 200 for a word of the ordinary RAM. That is
+the number the whole thing turns on.
+
+## The 6.7x gap is 1.15x
+
+| store | seven-instruction machine | ten-instruction machine |
+|---|---:|---:|
+| monolithic: one RAM region for everything writable | 47,295 | — |
+| monolithic: one ROM region, one RAM region | not eligible | 7,078 |
+| **hybrid: ROM plus five writable words** | **8,141** | 7,078 |
+
+The sketch estimated 8,000 and the measurement is 8,141, which is the one
+satisfying part of a result that demolishes the headline figure.
+
+**So the index register is worth 15%, not 570%.** Everything about the mechanism
+survives: writable storage still costs about 220 gates a word against 4.3 for
+read-only, and that ratio is still the largest single number in the project.
+What does not survive is the claim that a machine which rewrites its own code
+must pay for a writable *program store*. It pays for the words it actually
+writes — five of them — because their addresses are link-time constants.
+
+## What the article should say instead
+
+The two-group structure was real but it was a property of the memory map, not of
+the architectures. The defensible claim is narrower and, I think, more
+interesting:
+
+* Self-modifying code costs **one expensive word per patch site**, not an
+  expensive program store. Five sites, about 1,100 gates.
+* The index register removes those five words and 35 words of program, and is
+  worth about 1,200 gates on a 7,000-gate machine — 15%, still the largest
+  single instruction-set effect measured anywhere in this project.
+* The 6.7x figure is what a *coarse* memory map costs you, and coarse memory
+  maps are a design choice rather than a law.
+
+## What is still not measured
+
+The overlay puts a comparator and a mux leg in the memory read path, and phase 13
+showed that path-length changes of this kind are worth 10% of the clock. The
+hybrid store's Fmax has not been measured. Given phase 13, the expectation should
+be that it costs some, and the honest position is that the 15% area figure has an
+unmeasured timing penalty attached to it.
