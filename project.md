@@ -2094,3 +2094,79 @@ extra parts. Diode matrices need pull-downs and are slow to rise, which at the
 sizes above would matter. And nothing here is measured — these are textbook
 structures and catalogue prices, which is a weaker footing than the rest of this
 project and should be read as such.
+
+---
+
+# Phase 20: capacitors
+
+Asked whether the memory could be made from capacitors. It can, it is the
+cheapest writable storage in this model, and the idea is older than the thing it
+is now called.
+
+**The Atanasoff–Berry Computer did it in 1942.** Its memory was a pair of drums
+of 1,600 capacitors each, rotating once a second, with the charge rewritten on
+every rotation. Wikipedia's term for it is *regenerative capacitor memory*, and
+DRAM, twenty-four years later, is the same idea with the drum removed. So this
+is not a modern trick retrofitted to a discrete build — it is what the first
+electronic digital computer used, for exactly the reason it is attractive here.
+
+## The cells
+
+| cell | parts per bit | total parts | cost | what it needs around it |
+|---|---:|---:|---:|---|
+| RTL gated D latch (phase 19) | 20 | 7,360 | $76.54 | nothing — it is static |
+| 4T DRAM, cross-coupled | 4 | 1,532 | $50.16 | refresh counter and timer |
+| 3T DRAM plus an explicit capacitor | 4 | 1,532 | $42.80 | refresh counter and timer |
+| **1T1C DRAM** | **2** | **924** | **$23.92** | refresh, and a sense amp per column |
+
+**1T1C is 3.2x cheaper than the static latch file**, and the two intermediate
+cells are worth knowing because they trade that saving for not needing a sense
+amplifier. A 3T cell reads through its own transistor, so the stored charge
+never has to be detected on a shared line — which with discrete parts is the
+difficult bit, and the reason a hobbyist build would plausibly pay the extra $19
+for 3T rather than fight a sense amplifier made of loose transistors.
+
+Discrete capacitors help twice over, incidentally: a ceramic capacitor in the
+nanofarad range holds far more charge than an on-chip cell of a few tens of
+femtofarads, so retention is seconds rather than milliseconds and refresh is
+nearly free in cycles.
+
+## What it does to the machine
+
+| discrete build | core | data RAM | ROM | total | core's share |
+|---|---:|---:|---:|---:|---:|
+| with static latches | $92 | $77 | $28 | $197 | 47% |
+| with 1T1C DRAM | $92 | $24 | $28 | **$144** | **64%** |
+
+A 27% cheaper machine, and the processor is now almost two thirds of it.
+
+## The ratio, for the fourth time
+
+| writable bit against read-only bit | ratio |
+|---|---:|
+| discrete, static RTL latches | 52x |
+| gate-built, flip-flops | 47x |
+| gate-built, latches | 29x |
+| **discrete, 1T1C DRAM** | **16x** |
+| real silicon, SRAM against flash | 6x |
+
+Capacitor memory moves the discrete build from the expensive end of this table
+towards the silicon end, which makes sense: it is the same cell silicon uses. The
+finding survives at every point — read-only storage is always much cheaper than
+writable — but the span across technologies is now nearly an order of magnitude,
+from 6x to 52x, and any claim about *how much* the index register is worth has to
+name which of these it assumes.
+
+## And the project's own advice inverts completely
+
+In the gate-built model the data RAM was 65% of the machine and twelve phases of
+instruction-set search were fighting over 21%. In a discrete build with
+capacitor memory the data RAM is 17% and the processor is 64%. **The same
+project, run on a bench instead of in a synthesis tool, would have spent its
+effort in almost exactly the opposite place** — and phase 12's evolved core,
+twenty percent smaller, would be worth about 13% of the build rather than a
+fraction of a percent.
+
+Which is the general lesson of both cost models together: the question "where
+should I look for savings" has no answer independent of what you are building
+the machine out of.

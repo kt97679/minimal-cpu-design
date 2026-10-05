@@ -2337,3 +2337,41 @@ where it should stay.
 The figure-parity check flagged 52, 47 and 29 as mismatched again; it is the
 `x` against `×` notation difference recorded in entry 63, and normalising the
 notation clears it. Third time that check has cried wolf.
+
+### 79. Phase 20: capacitor memory
+
+Asked whether memory could be made from capacitors. Yes — and checked the
+history rather than recalling it: the Atanasoff–Berry Computer (1942) used
+exactly this, two drums of 1,600 capacitors rotating once a second with the
+charge rewritten each rotation. The term is *regenerative capacitor memory*, and
+DRAM in 1966 is the same idea without the drum.
+
+Costed four cells over the 368-bit data memory:
+
+```
+RTL gated D latch (phase 19)   20 parts/bit   $76.54   static, needs nothing
+4T DRAM, cross-coupled          4 parts/bit   $50.16   refresh only
+3T DRAM + explicit capacitor    4 parts/bit   $42.80   refresh only
+1T1C DRAM                       2 parts/bit   $23.92   refresh + sense amp per column
+```
+
+1T1C is 3.2x cheaper than the static file. The 3T cell is worth naming because
+it reads through its own transistor and so needs no sense amplifier, which with
+loose components is the hard part — plausibly worth $19 to a bench builder.
+
+Discrete capacitors help twice: a nanofarad ceramic holds far more charge than
+an on-chip cell of tens of femtofarads, so retention is seconds and refresh is
+nearly free in cycles.
+
+Whole machine: $197 with latches, **$144 with 1T1C**, and the core goes from 47%
+to 64% of the build.
+
+The ratio, now at five points: 52x discrete static, 47x gate-built flip-flops,
+29x gate-built latches, 16x discrete DRAM, 6x silicon. The finding holds
+everywhere and the magnitude spans nearly an order of magnitude, so any claim
+about *how much* the index register is worth must name its technology.
+
+And the project's own advice inverts: gate-built had RAM at 65% and the search
+fighting over 21%; discrete-with-capacitors has RAM at 17% and the core at 64%.
+The same project run on a bench would have spent its effort in almost the
+opposite place.
