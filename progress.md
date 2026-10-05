@@ -2375,3 +2375,43 @@ And the project's own advice inverts: gate-built had RAM at 65% and the search
 fighting over 21%; discrete-with-capacitors has RAM at 17% and the core at 64%.
 The same project run on a bench would have spent its effort in almost the
 opposite place.
+
+### 80. Phase 21: the clock a discrete build would reach
+
+Asked what clock frequency is realistic for the discrete machine. Grounded two
+ways rather than estimated: measured this design's critical path, and took the
+per-gate delay from machines people have actually built.
+
+**Measured: 43 gate levels** on the longest combinational path, mapped to
+2-input NANDs. The Megaprocessor's is ~30 levels (its 16-bit ripple adder) and
+it runs at 20-50 kHz.
+
+Real builds: Megaprocessor 20-50 kHz and MOnSter 6502 tens-to-hundreds of kHz,
+both discrete NMOS; Spikeputor 3.3 kHz; **MT15 at 2 MHz on discrete bipolar**.
+Arias blames the NMOS results on the gate capacitance of physically large
+packaged MOSFETs -- fixing it with twenty-fold smaller pull-ups would reach 1
+MHz at over a hundred watts. So bipolar is ~40x faster here, which is the same
+answer phase 19 got on cost: RTL is both the cheapest discrete family and the
+fastest practical one.
+
+```
+discrete NMOS (Megaprocessor class)     700 ns/level   33 kHz
+bipolar RTL, saturated                  250 ns/level   93 kHz
+bipolar RTL with speed-up capacitors     60 ns/level  388 kHz
+bipolar non-saturating, ECL-style        15 ns/level  1.55 MHz
+```
+
+The 33 kHz is a check rather than a prediction: it lands on what the
+Megaprocessor achieves from a path half again as long, which is the right order
+of agreement for a model this rough.
+
+Memory often dominates: a discrete DRAM bit line is loaded by every cell plus
+centimetres of wire, so 50 pF into 2.2 kohm is 0.3 us for three time constants.
+
+**Answer: 150-400 kHz** on discrete bipolar with reasonable care, 20-50 kHz on
+discrete MOSFETs. Reaching MT15's 2 MHz needs the path shortened as well --
+most of the 43 levels is the 16-bit adder's carry chain, which carry-select
+exists to fix at a component cost not priced here.
+
+At 340 kHz the benchmark takes 30 ms against 124 us on the phase 13 FPGA: three
+hundred times slower, for $144 of parts you can watch working.

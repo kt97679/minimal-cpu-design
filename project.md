@@ -2170,3 +2170,81 @@ fraction of a percent.
 Which is the general lesson of both cost models together: the question "where
 should I look for savings" has no answer independent of what you are building
 the machine out of.
+
+---
+
+# Phase 21: what clock a discrete build would actually run at
+
+Asked what frequency is realistic for the discrete machine of phases 19 and 20.
+The answer is grounded two ways: the critical path of this design is measured,
+and real discrete computers give the per-gate delay.
+
+## The measurement
+
+Mapped to 2-input NANDs, the ten-instruction machine's **longest combinational
+path is 43 gate levels**. For scale, the Megaprocessor's critical path is its
+16-bit ripple adder at about 30 levels, and it runs at 20–50 kHz.
+
+## What people have actually built
+
+| machine | devices | clock |
+|---|---|---|
+| Megaprocessor | discrete NMOS, 2N7000 | 20 kHz, later 50 |
+| MOnSter 6502 | discrete NMOS | tens to low hundreds of kHz |
+| Spikeputor | discrete NMOS | 3.3 kHz (built for visibility, not speed) |
+| **MT15** | **discrete bipolar** | **2 MHz** |
+
+The gap is the whole story. Jesús Arias' analysis of the first two blames the
+gate capacitance of discrete MOSFETs: the packaged transistors are physically
+large, so their gates are large, and driving them through a pull-up resistor is
+slow. Fixing it by shrinking the pull-ups twenty-fold would reach 1 MHz and
+dissipate over a hundred watts. **Bipolar transistors are about forty times
+faster in this application**, which is the same conclusion phase 19 reached on
+cost — RTL is both the cheapest discrete family and the fastest practical one.
+
+## This design, at 43 levels
+
+| family | ns per level | logic path | logic-only clock |
+|---|---:|---:|---:|
+| discrete NMOS (Megaprocessor class) | 700 | 30.1 µs | 33 kHz |
+| bipolar RTL, saturated, no speed-up capacitors | 250 | 10.8 µs | 93 kHz |
+| bipolar RTL with speed-up capacitors | 60 | 2.6 µs | 388 kHz |
+| bipolar non-saturating, ECL-style | 15 | 0.6 µs | 1.55 MHz |
+
+The 33 kHz for discrete NMOS is a check rather than a prediction: it lands on
+what the Megaprocessor actually achieves, from a path half again as long, which
+is the right sort of agreement for a model this rough.
+
+Saturated bipolar logic is slow for a specific reason — charge stored in the
+base when the transistor saturates has to be removed before it turns off, and
+that storage time dominates. A speed-up capacitor across the base resistor
+shunts it out, which is why the family is sometimes written RCTL, and it is
+worth roughly a factor of four.
+
+## Then the memory
+
+A discrete DRAM read drives a bit line loaded by every cell on it plus
+centimetres of wiring, and that is often slower than the logic:
+
+| bit line | pull-up | three time constants |
+|---:|---:|---:|
+| 30 pF | 1 kΩ | 0.1 µs |
+| 50 pF | 2.2 kΩ | 0.3 µs |
+| 100 pF | 4.7 kΩ | 1.4 µs |
+
+Taking RTL with speed-up capacitors and a 50 pF bit line: 2.6 µs of logic plus
+0.3 µs of memory, **about 340 kHz**.
+
+## The answer
+
+**150–400 kHz** for this design built from discrete bipolar transistors with
+reasonable care, and **20–50 kHz** if built from discrete MOSFETs like the two
+best-known examples. Getting to MT15's 2 MHz would need the critical path
+shortened as well as the family chosen — 43 levels is a lot, and most of it is
+the 16-bit adder's carry chain, which is exactly what a carry-select or
+carry-lookahead structure exists to fix, at a cost in components this project
+has not priced.
+
+At 340 kHz the benchmark's 10,333 cycles take **30 milliseconds**, against 124
+microseconds on the FPGA of phase 13. Three hundred times slower, for a machine
+costing $144 in parts that you can watch working.
