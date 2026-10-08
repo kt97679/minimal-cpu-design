@@ -2397,3 +2397,75 @@ happens to equal 45 + 2.
 
 The general form, which the other project states better than I would: if a check
 has never gone red, you do not know what it checks.
+
+---
+
+# Phase 24: three checks taken from the Paleocomputing repository
+
+Having read the article, I had not read its repository, which is where its
+methods actually live — thirty-odd numbered findings, each with the commands to
+reproduce it. Three of them bear directly on this project's flow.
+
+## Their synthesis traps, checked against this flow
+
+Their finding 3 reports two ways the open synthesis flow lies. `stat -tech cmos`
+counts only `$_DFF_P_` and `$_DFF_N_`, so on their core it silently ignored 758
+of 993 flip-flops — 76% — with a single trailing `+` as the only hint. And
+`abc -liberty` without a `-constr` file ignores the delay target completely:
+their area came out identical to the last digit across a 250x range of timing
+targets.
+
+Checked here. The final netlist of the ten-instruction machine contains exactly
+three cell types — `$_DFF_P_` 38, `$_NAND_` 790, `$_NOT_` 316 — because
+`dfflegalize -cell $_DFF_P_ 0` collapses every flip-flop variant to one before
+counting. The first trap cannot occur. The second does not apply: this flow uses
+no liberty file and no delay target, which is also why phase 23 found zero
+spelling noise where they found ±0.6%.
+
+Both of their traps are real and neither bites here, which is worth knowing
+precisely because it was never checked across twenty-three phases.
+
+## Their decoder equivalence check, which this project needed
+
+Their finding 12 is the one that transfers. RISC5 traps on nothing, so every
+32-bit word decodes as some instruction, and a new instruction that accidentally
+occupies two encodings changes the behaviour of existing code silently. They
+found exactly that — a missing `~u &` in the decode meant their `CHK` claimed two
+slots — and observed that **no functional test could ever have caught it,
+because functional tests only execute the encodings the compiler emits.**
+
+That argument applies here unchanged, and this project has three places that
+independently believe they know the opcode map: `gen_rtl` assigns opcodes with
+`sorted(iset)`, `emit.py` assembles with `sorted(iset)`, and the reference
+emulator indexes `order[op]`. Nothing has ever checked that all three agree, or
+what the hardware does with the opcodes no instruction was assigned to.
+
+`sw/decoder_equiv.py` now runs every one of the 16 opcode values against several
+operand patterns, on the generated RTL and on the reference model, from an
+identical starting state. Result:
+
+```
+opcodes with an instruction assigned        10
+disagreements between hardware and model     0
+unassigned opcodes (6 of 16)                 a two-cycle no-op; acc and memory
+                                             untouched, pc advances normally
+```
+
+So the three opcode maps do agree, and the six unused encodings are inert rather
+than aliasing onto real instructions. Both are now measured rather than assumed.
+
+Getting there took two harness bugs, both of the kind this project keeps
+meeting. The first run reported sixteen disagreements because the machine ran on
+past the instruction under test and executed whatever followed; the fix is to
+fill every other address with a jump to itself so the state freezes after one
+instruction. The second reported two, because a store whose target was the next
+address destroyed that self-jump. Neither was a decoder fault, and reporting
+either would have been a false alarm about the thing rather than about the
+check.
+
+## What was deliberately not taken
+
+Their repository is 107 MB of QEMU ports, Kubernetes packaging and browser
+embedding, none of which has any bearing on gate counts. The three findings
+above transfer because they are about the measurement, not the subject. Taking
+more would have been collecting rather than borrowing.

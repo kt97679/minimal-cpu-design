@@ -2487,3 +2487,42 @@ After fixing the data: 10 of 11. New file `sw/mutate.py`.
 Worth recording as the lesson: if a check has never gone red, you do not know
 what it checks -- and this project had been treating "the golden model agrees"
 as proof since phase 1.
+
+### 83. Phase 24: reading the repository, not just the article
+
+Asked whether I had checked the repository the article references. I had not --
+I read the article and stopped, which is the gap the article itself warns about.
+It holds thirty-odd numbered findings with reproduction commands, and three bear
+on this flow.
+
+**Their synthesis traps, checked here.** `stat -tech cmos` counts only
+`$_DFF_P_`/`$_DFF_N_` and silently lost 758 of their 993 flip-flops, 76%, with a
+trailing `+` as the only hint. And `abc -liberty` without `-constr` ignores the
+delay target entirely -- their area was identical to the last digit across a 250x
+range of targets. Neither bites here: our netlist has exactly three cell types
+because `dfflegalize -cell $_DFF_P_ 0` collapses every variant before counting,
+and we use no liberty file or delay target. That also explains why phase 23
+measured zero spelling noise where they measured ±0.6%.
+
+**Their decoder equivalence check, which we needed.** Finding 12: no functional
+test can catch an instruction that occupies two encodings, because functional
+tests only execute encodings the compiler emits. They found their `CHK` taking
+two slots from a missing `~u &`.
+
+Three places here independently derive the opcode map -- `gen_rtl`, `emit.py`
+and the reference emulator -- and nothing had ever checked they agree, or what
+the hardware does with unassigned opcodes. `sw/decoder_equiv.py` now runs all 16
+opcode values against several operand patterns on RTL and model: **0
+disagreements**, and the 6 unused encodings are an inert two-cycle no-op rather
+than aliases of real instructions.
+
+Two harness bugs on the way, both the familiar kind. First run: 16
+disagreements, because the machine executed past the instruction under test --
+fixed by filling every other address with a jump to itself so the state freezes.
+Second: 2 disagreements, because a store to the next address destroyed that
+self-jump. Neither was a decoder fault, and publishing either would have been a
+false alarm about the design rather than the check.
+
+Not taken: 107 MB of QEMU ports, Kubernetes packaging and browser embedding,
+none of which touches gate counts. The three that transferred are about
+measurement, not subject.
