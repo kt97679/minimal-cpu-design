@@ -2323,3 +2323,77 @@ bought as a $1 microcontroller that is ten thousand times faster. What the
 exercise produced is not a cheap computer. It is a set of measurements about
 where cost lives in one, and those turned out to transfer across four cost
 models that disagree with each other about almost everything else.
+
+---
+
+# Phase 23: a mutation audit, borrowed from a neighbouring project
+
+A reader pointed at a Habr article on running Niklaus Wirth's RISC5 processor —
+the same genre as this project, built the same way, with agent reviewers and
+agent auditors. Two of its methods were worth importing, and both have been run
+here.
+
+## Does the spelling of the Verilog change the gate count?
+
+That project rewrote its processor four ways with logically neutral edits — extra
+parentheses, an OR with zero — and found the area moved by about as much as the
+feature it was trying to measure. They could honestly only report "less than one
+percent".
+
+That is a direct threat to this project, where everything rests on synthesised
+gate counts and several comparisons are narrower than two percent. So it was
+measured: the ten-instruction machine, rewritten seven ways that change nothing —
+extra parentheses, AND with ones, OR with zero, double negation, a commuted
+adder, a redundant wire, XOR with zero.
+
+**All seven synthesise to 1,334 gates. Zero spread.**
+
+The difference is the flow. That project measured standard-cell area against a
+timing constraint, where the mapper's choices are sensitive to how the input is
+written. This one runs `abc -g NAND`, which optimises technology-independently
+and maps to a single gate type, so logically equivalent inputs converge on the
+same netlist. The noise that invalidated their sub-one-percent claims does not
+exist here, and that is now measured rather than assumed.
+
+It does not cover everything. The ~50-gate variation seen in phase 12, when
+removing a redundant instruction changed the opcode assignment, is
+content-dependent rather than spelling-dependent, and that one is real.
+
+## Do the checks catch broken hardware?
+
+Their harsher finding: they injected thirty plausible bugs into their processor
+and their tests caught ten. Two thirds of broken processors passed as healthy.
+
+This project had shown one check could fail — the baseline, by corrupting a
+recorded figure — but had never asked it of the RTL verification. So
+`sw/mutate.py` injects eleven plausible slips: a swapped operator, an inverted
+flag, a wrong bit field, a dropped write enable, an ignored index register.
+
+First run: **8 of 10 caught**, and both misses were worth more than the eight.
+
+**The test data was too kind.** The array base is 45 and the index was 2, and
+45 | 2 = 45 + 2 = 47. A mutation replacing the index adder with an OR was
+therefore invisible. Changing the index to 3 — where 45 | 3 = 47 and 45 + 3 = 48
+— catches it. The verification had been passing partly by arithmetic
+coincidence.
+
+**The design states its branch condition twice.** The generated RTL writes
+`zf ? iad : pc` once for the fetch address and once for the program counter
+update. Mutating one of the two is invisible; mutating both is caught at once. A
+bug in one of two mirrored expressions is a real blind spot, and the right
+response is to note it rather than to fix the mutation.
+
+After fixing the data: **10 of 11 caught**, with the remaining miss being that
+mirrored-expression case, kept in the suite as a known gap rather than quietly
+removed.
+
+## What it cost to find out
+
+Two experiments, both cheap, both borrowed. One confirmed that a threat to the
+entire project does not apply to it, which is worth more than it sounds — that
+claim had been assumed through twenty-two phases. The other found that a check
+this project has leaned on since phase 7 was passing partly because 45 | 2
+happens to equal 45 + 2.
+
+The general form, which the other project states better than I would: if a check
+has never gone red, you do not know what it checks.

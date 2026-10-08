@@ -2451,3 +2451,39 @@ machine twenty-two phases went into minimising is available as a $1
 microcontroller ten thousand times faster. What the work produced is not a cheap
 computer but a set of measurements about where cost lives in one -- which did
 transfer across four cost models that disagree about nearly everything else.
+
+### 82. Phase 23: two methods borrowed from the Paleocomputing article
+
+Pointed at a Habr article on running Wirth's RISC5 -- same genre as this
+project, agent-written, with agent reviewers and auditors. Two methods were
+directly applicable.
+
+**Synthesis noise under neutral rewrites.** That project rewrote its Verilog
+four ways with logically neutral edits and found the area moved by as much as
+the feature it was measuring, so it could only claim "under one percent". A
+direct threat here, where several comparisons are narrower than 2%. Measured:
+the ten-instruction machine rewritten seven ways -- extra parens, AND with ones,
+OR with zero, double negation, commuted adder, redundant wire, XOR with zero --
+all synthesise to **1,334 gates, zero spread**. The difference is the flow:
+they measured standard-cell area against a timing constraint; this runs
+`abc -g NAND`, which optimises technology-independently and converges. A threat
+assumed away for twenty-two phases is now measured.
+
+**Mutation audit of the verification.** Theirs caught 10 of 30 injected
+processor bugs. Mine caught 8 of 10 on the first run, and both misses were worth
+more than the eight:
+
+* *The test data was too kind.* Array base 45, index 2, and 45|2 == 45+2 == 47,
+  so replacing the index adder with an OR was invisible. Index 3 catches it
+  (45|3 = 47, 45+3 = 48). The check had been passing partly by arithmetic
+  coincidence since phase 7.
+* *The design states its branch condition twice* -- once for the fetch address,
+  once for the pc update. Mutating one is invisible, mutating both is caught. A
+  bug in one of two mirrored expressions is a genuine blind spot, kept in the
+  suite as a known gap rather than removed.
+
+After fixing the data: 10 of 11. New file `sw/mutate.py`.
+
+Worth recording as the lesson: if a check has never gone red, you do not know
+what it checks -- and this project had been treating "the golden model agrees"
+as proof since phase 1.
