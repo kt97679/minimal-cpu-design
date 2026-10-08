@@ -2415,3 +2415,39 @@ exists to fix at a component cost not priced here.
 
 At 340 kHz the benchmark takes 30 ms against 124 us on the phase 13 FPGA: three
 hundred times slower, for $144 of parts you can watch working.
+
+### 81. Phase 22: the bill of materials, three ways
+
+Costed all 24 discrete combinations of core, logic family and memory cell, plus
+the 74HC-series versions.
+
+```
+(a) fewest parts   evolved core, CMOS, 1T1C DRAM    9,363 parts   $224
+(b) lowest cost    evolved core, RTL,  1T1C DRAM   11,316 parts   $105
+    logic ICs + memory chips                          271 ICs     $60
+```
+
+Two of three choices agree across both discrete optima. **Both pick the phase 12
+evolved core** -- the one GP found with no subtractor, which in the gate model
+was worth a fraction of a percent below measurement noise and here is worth $14
+of $118, because the processor is most of a discrete build. **Both pick 1T1C
+capacitor memory**, two parts a bit against twenty for a static latch.
+
+They disagree on family, by a factor of two in money: CMOS needs 17% fewer parts
+and costs 114% more, because a p-channel MOSFET is 2.5x an NPN. So bipolar if
+paying for parts, MOSFETs if paying for board area -- and per phase 21 that
+choice also costs you 20-50 kHz against 150-400.
+
+The IC numbers hold the better finding. Gate ICs throughout is 1,782 ICs and
+$356, of which **$303 is the memory** -- six times the processor, which is this
+project's original finding appearing in a fourth cost model. Two memory chips
+and an EEPROM replace 1,514 ICs and $300. The processor itself is 251 quad
+NANDs and 17 dual flip-flops: $54.
+
+Ended the phase with the honest comparison rather than the flattering one: the
+IC build is cheaper, forty times fewer parts and an order of magnitude faster,
+so the discrete build is an aesthetic choice and not an engineering one. And the
+machine twenty-two phases went into minimising is available as a $1
+microcontroller ten thousand times faster. What the work produced is not a cheap
+computer but a set of measurements about where cost lives in one -- which did
+transfer across four cost models that disagree about nearly everything else.

@@ -2248,3 +2248,78 @@ has not priced.
 At 340 kHz the benchmark's 10,333 cycles take **30 milliseconds**, against 124
 microseconds on the FPGA of phase 13. Three hundred times slower, for a machine
 costing $144 in parts that you can watch working.
+
+---
+
+# Phase 22: what it would cost to build
+
+Asked for the bill of materials three ways: discrete parts minimising component
+count, discrete parts minimising money, and simple logic ICs. All twenty-four
+discrete combinations of core, logic family and memory cell were costed.
+
+Parts prices are bulk hobbyist figures and nothing here is a quotation. Board,
+sockets and the several thousand solder joints are not priced at all, and for a
+build this size they are the real cost.
+
+## The two discrete optima are different machines
+
+| | core | family | memory | parts | cost |
+|---|---|---|---|---:|---:|
+| **(a) fewest parts** | evolved, no subtractor | CMOS | 1T1C DRAM | **9,363** | $223.76 |
+| **(b) lowest cost** | evolved, no subtractor | RTL | 1T1C DRAM | 11,316 | **$104.57** |
+
+Two of the three choices agree, and one does not.
+
+**Both pick the evolved core from phase 12** — the machine genetic programming
+found, with no subtractor. In the gate-built model that core was worth a
+fraction of a percent and sat below the measurement noise. Here it is worth
+$14 of $118, because the processor is most of a discrete build.
+
+**Both pick 1T1C capacitor memory.** Nothing else comes close: it is two parts a
+bit where a static latch is twenty.
+
+**They disagree on the logic family, and by a factor of two in money.** Discrete
+CMOS needs 17% fewer parts and costs 114% more, because a p-channel MOSFET is
+two and a half times an NPN transistor. DTL matches RTL on cost exactly and
+needs 23% more parts, so it is only worth buying for the fan-out and noise
+margin this model does not price.
+
+If you are paying for parts, build it from bipolar transistors. If you are
+paying for board area or solder joints, build it from MOSFETs — and accept, per
+phase 21, that it will then run at 20–50 kHz instead of 150–400.
+
+## Simple logic ICs
+
+| build | ICs | passives | cost |
+|---|---:|---:|---:|
+| gate ICs throughout, memory included | 1,782 | — | $356.40 |
+| gate ICs, memory as memory chips | **271** | — | **$59.74** |
+| gate ICs, SRAM chip, diode-matrix ROM | 270 | 3,620 | $77.98 |
+
+The logic itself is 251 of the 74HC00 quad NANDs and 17 of the 74HC74 dual
+flip-flops: **$54 for the whole processor**.
+
+The interesting row is the first. Building the *memory* from gate ICs costs
+$303 of the $356 — six times the processor — which is the same finding this
+project started with, in a fourth cost model. Two memory chips and an EEPROM
+replace 1,514 ICs and $300.
+
+## The answer
+
+| build | parts | cost | clock |
+|---|---:|---:|---|
+| discrete, fewest parts | 9,363 | $224 | 20–50 kHz |
+| discrete, lowest cost | 11,316 | **$105** | 150–400 kHz |
+| logic ICs plus memory chips | 271 | **$60** | 2–10 MHz |
+
+**About $105 in discrete transistors, or about $60 in 74HC parts** — and the IC
+version is cheaper, smaller, forty times fewer parts, and an order of magnitude
+faster. The discrete build is not an engineering choice; it is an aesthetic one,
+and the figures say it costs roughly double for a hundredth of the performance.
+
+Which is worth stating plainly because it is the honest end of the whole
+exercise: the machine this project spent twenty-two phases minimising can be
+bought as a $1 microcontroller that is ten thousand times faster. What the
+exercise produced is not a cheap computer. It is a set of measurements about
+where cost lives in one, and those turned out to transfer across four cost
+models that disagree with each other about almost everything else.
