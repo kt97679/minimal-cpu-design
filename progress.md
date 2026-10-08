@@ -2526,3 +2526,35 @@ false alarm about the design rather than the check.
 Not taken: 107 MB of QEMU ports, Kubernetes packaging and browser embedding,
 none of which touches gate counts. The three that transferred are about
 measurement, not subject.
+
+### 84. Articles updated for phases 21-24, selectively
+
+Applied the standing test again -- a finding earns article space only if it
+changes a claim already there -- to the four phases since the last pass.
+
+**A real correction.** Part 2 quoted $201 for the discrete build. That is the
+static-latch version, and it is no longer the optimum: capacitor memory at two
+parts a bit against twenty, with the evolved core, brings the same machine to
+**$105**. The article was stating a cost that the project had already beaten.
+
+**Two gaps that made the section misleading by omission.** It invited the reader
+to imagine building the machine and gave no speed -- now **150-400 kHz** on
+bipolar, 20-50 kHz on discrete MOSFETs, where the Megaprocessor and MOnSter 6502
+actually sit. And it never gave the comparison that makes the discrete build an
+aesthetic rather than an engineering choice: the same machine in 74HC logic with
+two memory chips is **271 parts and about $60**, an order of magnitude faster.
+Leaving that out read as advocacy. Building the memory from gate ICs instead
+costs $303 of $356, six times the processor, which is this project's own finding
+arriving in a fourth cost model and belongs in the article for that reason.
+
+**Not a chapter: phases 23 and 24.** The noise floor and the decoder
+equivalence check change no claim; they support the precision of claims already
+made. Both went into the provenance footer of part 1 as two clauses -- the same
+design rewritten seven neutral ways gives the same gate count, so there is no
+spelling noise to hide behind, and all sixteen opcode values have been run
+against hardware and model, so the three components agree on what each means. A
+reader who wonders whether a 1.5% difference is above the noise now has an
+answer in the place they would look for it.
+
+Part 2 is 2,291 words from 2,103. Part 1 unchanged in length. 95/95 and 62/62
+blocks, figures matching, `make verify` green on all 16.

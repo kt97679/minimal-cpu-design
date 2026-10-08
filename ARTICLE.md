@@ -513,6 +513,11 @@ flash rather than gates.
 synthesis scripts and a Makefile that reproduces every number are in this
 repository, and `make verify` recomputes the published figures and compares
 them against a recorded baseline, so a reader can check them rather than trust
-them. The transistor-per-bit comparisons are explicitly not. See
-[DESIGN.md](DESIGN.md) for the winning machine and [project.md](project.md) for
-the full method.*
+them. Two things about the measurement itself, since several comparisons here
+are narrower than two percent: the same design rewritten seven logically
+neutral ways synthesises to the same gate count every time, so there is no
+spelling noise to hide behind; and all sixteen opcode values have been run
+against both the hardware and the reference model, so the compiler, the
+assembler and the processor are known to agree on what each one means. The
+transistor-per-bit comparisons are explicitly not. See [DESIGN.md](DESIGN.md)
+for the winning machine and [project.md](project.md) for the full method.*

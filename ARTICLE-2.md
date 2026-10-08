@@ -226,6 +226,21 @@ largest item: 46% of a discrete build against 21% of a gate-built one. Which
 means the instruction-set work that was worth almost nothing in part 1 would be
 worth about 9% of a machine built on a bench.
 
+Two things that section leaves out, and both matter to anyone who might
+actually build it. The $201 is the static-latch version: capacitor memory, the
+same 1T1C cell DRAM uses and the Atanasoff–Berry Computer used in 1942, is two
+parts a bit against twenty, and with the evolved core of chapter 6 the whole
+machine comes to **$105**. And at 43 gate levels on its critical path it would
+run at **150–400 kHz** on bipolar transistors, or 20–50 kHz on discrete
+MOSFETs, which is where the Megaprocessor and the MOnSter 6502 actually sit.
+
+Against which the honest comparison is the one that makes the discrete build an
+aesthetic choice rather than an engineering one. The same machine in 74HC logic
+with two memory chips is **271 parts and about $60**, an order of magnitude
+faster and forty times fewer things to solder. Building the memory from gate
+ICs instead costs $303 of a $356 total — six times the processor — which is
+this article's own finding arriving in a fourth cost model.
+
 These figures are textbook structures and catalogue prices rather than
 measurements, and should be read a notch below everything else here.
 
