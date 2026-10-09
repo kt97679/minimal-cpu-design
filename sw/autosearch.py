@@ -183,6 +183,105 @@ def search_acc(iset, consts, start, goal, maxdepth=4, beam=20000):
     return None
 
 
+def branch_transform(iset, want, consts):
+    """Найти преобразование f, после которого одна имеющаяся проверка даёт `want`.
+
+    Например, "x < 0" это "x+1 <= 0": если в машине есть только переход по
+    "<= 0", проверка на знак получается вычитанием минус единицы. Ищется
+    перебором коротких последовательностей, а не задаётся вручную: условие
+    считается выполненным, если совпадение держится на отрицательном, нуле и
+    положительном одновременно.
+    """
+    have = {n: COND[n] for n in iset if n in COND}
+    if not have:
+        return None
+    probes = [(-5, NEG), (-1, NEG), (0, ZERO), (1, POS), (7, POS)]
+    usable = [POOL[n] for n in iset
+              if POOL[n]['kind'] == 'alu' and POOL[n]['mode'] != 'X']
+    cands = [()]                                    # пустое преобразование
+    for ins in usable:
+        for o in list(consts):
+            cands.append(((ins['name'], o),))
+    for cname, cset in have.items():
+        for seq in cands:
+            ok = True
+            for v, cls in probes:
+                acc = v & MASK
+                for nm, o in seq:
+                    pp = POOL[nm]
+                    m = consts[o] if pp['mode'] == 'I' else consts[o]
+                    acc = ALU[pp['op']](acc, m & MASK) & MASK
+                got = ('z' if acc == 0 else ('n' if acc & 0x8000 else 'p')) in cset
+                if got != (cls in want):
+                    ok = False; break
+            if ok:
+                return list(seq), [(cname, 'L')]
+    return None
+
+
+def branch_two_stage(iset, want, consts):
+    """Проверка в два приёма: условие W истинно, когда одна и та же имеющаяся
+    проверка C срабатывает на двух разных преобразованиях операнда.
+
+    Так получается равенство нулю на машине, умеющей только "<= 0": x == 0
+    тогда и только тогда, когда -x <= 0 и x <= 0. Пары преобразований ищутся
+    перебором; сама схема "проверить, перепрыгнуть, проверить ещё раз" задана
+    мной, как и две схемы доступа к массиву.
+    """
+    have = {n: COND[n] for n in iset if n in COND}
+    uncond = [n for n, c in have.items()
+              if branch_transform(iset, frozenset({NEG, ZERO, POS}), consts)]
+    if not have or not uncond:
+        return None
+    usable = [POOL[n] for n in iset
+              if POOL[n]['kind'] == 'alu' and POOL[n]['mode'] != 'X']
+    # короткие способы получить значение из операнда s
+    ways = []
+    for ins in usable:
+        if ins['op'] == 'LD' and ins['mode'] == 'D':
+            ways.append((((ins['name'], 's'),), lambda x: x))
+    for a in list(usable):
+        for b in list(usable):
+            if a['op'] == 'LD' and a['mode'] == 'D' and b['mode'] == 'D':
+                for k, kv in consts.items():
+                    f = lambda x, bb=b, v=kv: ALU[bb['op']](x, v & MASK) & MASK
+                    ways.append((((a['name'], k), (b['name'], 's')), None))
+    # явный набор: v = s  и  v = const - s
+    cand = []
+    for ins in usable:
+        if ins['op'] == 'LD' and ins['mode'] == 'D':
+            cand.append(((ins['name'], 's'),))
+            for sub in usable:
+                if sub['op'] == 'SUB' and sub['mode'] == 'D':
+                    for k in consts:
+                        cand.append(((ins['name'], k), (sub['name'], 's')))
+    probes = [(-5, NEG), (-1, NEG), (0, ZERO), (1, POS), (7, POS)]
+    def val(seq, x):
+        acc = 0
+        for nm, o in seq:
+            pp = POOL[nm]
+            m = (x & MASK) if o == 's' else consts[o]
+            acc = ALU[pp['op']](acc, m & MASK) & MASK
+        return acc
+    for cname, cset in have.items():
+        for s1 in cand:
+            for s2 in cand:
+                ok = True
+                for x, cls in probes:
+                    a = ('z' if val(s1, x) == 0 else
+                         ('n' if val(s1, x) & 0x8000 else 'p')) in cset
+                    b = ('z' if val(s2, x) == 0 else
+                         ('n' if val(s2, x) & 0x8000 else 'p')) in cset
+                    if (a and b) != (cls in want):
+                        ok = False; break
+                if ok:
+                    jmp = branch_transform(iset, frozenset({NEG, ZERO, POS}), consts)
+                    return dict(stage1=list(s1), cond=cname, stage2=list(s2),
+                                jmp=jmp, words=len(s1) + 1 + len(jmp[0]) + 1
+                                          + len(s2) + 1)
+    return None
+
+
 def branch_plan(iset, want):
     """Cover the outcome classes in `want` with the available conditional jumps.
 
