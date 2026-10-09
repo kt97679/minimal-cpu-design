@@ -217,6 +217,7 @@ class Target:
 
     def __init__(self):
         self.words, self.labels, self.sym = [], {}, {}
+        self._nlbl = 0
         self.consts, self.vars = {}, []
 
     def var(self, name):
@@ -247,6 +248,10 @@ class Target:
         self.consts.setdefault(name, ('neg', base))
         return name
 
+    def newlabel(self):
+        self._nlbl += 1
+        return '_L%d' % self._nlbl
+
     def here(self):
         return len(self.words)
 
@@ -259,7 +264,7 @@ class Target:
     def assemble(self, prog):
         n = ncode = 0
         for _ in range(2):
-            self.words, self.labels = [], {}
+            self.words, self.labels, self._nlbl = [], {}, 0
             for op in prog:
                 if op[0] == 'label':
                     self.labels[op[1]] = self.here()
@@ -318,10 +323,13 @@ ACYC = {LDA: 2, STA: 2, SUB: 2, ADD: 2, LDX: 2, LDAX: 2, STAX: 2,
 
 class Acc(Target):
     def __init__(self, has_add=False, has_jmp=False, has_index=False,
-                 has_imm=False):
+                 has_imm=False, has_le=False):
         super().__init__()
         self.has_add, self.has_jmp, self.has_index = has_add, has_jmp, has_index
         self.has_imm = has_imm
+        # has_le: единственный переход проверяет "<= 0", как у самого SUBLEQ.
+        # Тогда равенство нулю и знак выражаются через него, а не наоборот.
+        self.has_le = has_le
         self.self_modifying = not has_index
         if not has_add:
             self.var('_t0')
@@ -385,9 +393,24 @@ class Acc(Target):
         elif k == 'jmp':
             self.jump(op[1])
         elif k == 'jz':
-            self.var(op[1]); self.i(LDA, op[1]); self.i(JZ, op[2])
+            self.var(op[1])
+            if self.has_le:
+                # x == 0  <=>  x <= 0  и  -x <= 0: проверка в два приёма
+                a = self.newlabel(); skip = self.newlabel()
+                self.i(LDA, op[1]); self.i(JZ, a)
+                self.jump(skip)
+                self.labels[a] = self.here()
+                self.i(LDA, self.K(0)); self.i(SUB, op[1]); self.i(JZ, op[2])
+                self.labels[skip] = self.here()
+            else:
+                self.i(LDA, op[1]); self.i(JZ, op[2])
         elif k == 'jn':
-            self.var(op[1]); self.i(LDA, op[1]); self.i(JN, op[2])
+            self.var(op[1])
+            if self.has_le:
+                # x < 0  <=>  x + 1 <= 0
+                self.i(LDA, op[1]); self.i(SUB, self.K(-1)); self.i(JZ, op[2])
+            else:
+                self.i(LDA, op[1]); self.i(JN, op[2])
         elif k == 'halt':
             self.labels['_halt'] = self.here(); self.jump('_halt')
         elif k == 'ldx':
@@ -414,7 +437,7 @@ class Acc(Target):
             raise ValueError(k)
 
 
-def emu_acc(mem, n, nout, limit=10 ** 7):
+def emu_acc(mem, n, nout, limit=10 ** 7, has_le=False):
     mem = mem[:] + [0]
     pc = acc = xreg = cyc = ic = 0
     out = []
@@ -432,7 +455,8 @@ def emu_acc(mem, n, nout, limit=10 ** 7):
             else:
                 mem[ad] = acc
         elif opc == JZ:
-            if acc == 0:
+            # с HAS_LE тот же опкод означает "<= 0", как у самого SUBLEQ
+            if (acc == 0) or (has_le and (acc & 0x8000)):
                 pc = ad
         elif opc == SUB:
             acc = (acc - mem[ad]) & MASK
@@ -756,6 +780,8 @@ DESIGNS = [
     # because every design has one.
     dict(key='sqp',   label='SUBLEQ + ADR/IND ports',    nops=3,
          make=lambda: SubleqP(), defs=[], emu='sqp'),
+    dict(key='a4le',  label='LDA STA SUB JLE',          nops=4,
+         make=lambda: Acc(has_le=True), defs=['HAS_LE']),
     dict(key='a5',    label='LDA STA JZ SUB JN',         nops=5,
          make=lambda: Acc(), defs=['HAS_SIGN']),
     dict(key='a7',    label='+ ADD JMP',                 nops=7,
@@ -786,7 +812,8 @@ def build():
         mem, n, ncode, nro = t.assemble(prog)
         emu = {'sq': emu_subleq, 'sqp': emu_subleq2,
                'move': emu_move}.get(d['key'], emu_acc)
-        vals, cyc, ic = emu(mem, n, len(gold))
+        kw = {'has_le': True} if 'HAS_LE' in d['defs'] else {}
+        vals, cyc, ic = emu(mem, n, len(gold), **kw)
         assert vals == gold, (d['key'], len(vals), vals[:6], gold[:6])
         out[d['key']] = dict(mem=mem, n=n, ncode=ncode, nro=nro,
                              cycles=cyc, instrs=ic,

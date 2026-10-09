@@ -9,6 +9,7 @@
 //   HAS_LOGIC     8 AND m   9 OR m    10 XOR m  11 SHR
 //   HAS_IMM       6 LDI i   7 ADDI i  (12-bit sign-extended immediate;
 //                 mutually exclusive with HAS_CTR, which uses the same slots)
+//   HAS_LE        2 JZ a becomes 'branch if acc <= 0' (SUBLEQ's own test)
 //   HAS_SIGN     12 JN a                        (branch on acc[15])
 //   HAS_INDEX    13 LDX m  14 LDAX m  15 STAX m (8-bit index register X)
 //
@@ -41,6 +42,12 @@ module cpu_acc #(parameter AW = 8) (
     wire [3:0]    iop  = mdin[15:12];
     wire [AW-1:0] iad  = mdin[AW-1:0];
     wire          zero = (acc == 16'd0);
+`ifdef HAS_LE
+    // SUBLEQ ветвится по "<= 0" -- это одна проверка, а не две.
+    wire          brc  = zero | acc[15];
+`else
+    wire          brc  = zero;
+`endif
 `ifdef HAS_INDEX
     wire [AW-1:0] xad  = iad + xreg;   // xreg zero-extends to AW
 `endif
@@ -56,7 +63,7 @@ module cpu_acc #(parameter AW = 8) (
         case (state)
             S_D: case (iop)
                 4'd1: begin maddr = iad; mwe = 1'b1; end             // STA
-                4'd2: begin maddr = zero ? iad : pc; ifetch = 1'b1; end
+                4'd2: begin maddr = brc ? iad : pc; ifetch = 1'b1; end
 `ifdef HAS_JMP
                 4'd5: begin maddr = iad; ifetch = 1'b1; end
 `endif
@@ -96,7 +103,7 @@ module cpu_acc #(parameter AW = 8) (
                     case (iop)
                         4'd1: state <= S_W;
                         4'd2: begin
-                            pc    <= (zero ? iad : pc) + 1'b1;
+                            pc    <= (brc ? iad : pc) + 1'b1;
                             state <= S_D;
                         end
 `ifdef HAS_JMP
