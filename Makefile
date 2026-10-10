@@ -98,3 +98,9 @@ parity:
 	python3 sw/parity.py
 
 .PHONY: parity
+
+# Дискретная сборка: детали и деньги по одному набору цен.
+discrete:
+	python3 sw/discrete.py
+
+.PHONY: discrete
