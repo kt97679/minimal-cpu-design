@@ -28,7 +28,7 @@ dominates — which is exactly where 3 words per instruction hurts.
 
 ## Phase 2: what actually minimises gates
 
-A word of gate-built RAM costs ~196 gates, so the 100-word output array was 71%
+A word of gate-built RAM costs ~116 gates, so the 100-word output array was 71%
 of the phase 1 machine. Replacing it with an output port and sweeping the
 instruction set gives the real picture:
 
@@ -45,7 +45,7 @@ instruction set gives the real picture:
 Three findings:
 
 * **The curve turns up at 12 instructions.** An instruction pays for itself only
-  if it removes at least one word of program per ~196 gates it adds. The four
+  if it removes at least one word of program per ~116 gates it adds. The four
   logic instructions in the 12-op variant are never executed, so they are pure
   cost.
 * **Code in ROM beats every ISA decision.** A ROM word is 3-8 gates against ~196
@@ -80,7 +80,7 @@ subtract; see below.)
 The index register is the reason, and not for the obvious reason. It costs
 ~200 gates and saves only 12 words of program. What it actually does is remove the
 need for self-modifying code, which lets the whole program move from RAM
-(~196 gates/word) into ROM (~4 gates/word). **ROM eligibility is an ISA
+(~116 gates/word) into ROM (~4 gates/word). **ROM eligibility is an ISA
 property**, and on any workload with array indexing exactly one instruction group
 buys it.
 
@@ -88,11 +88,11 @@ buys it.
 
 A literature survey (Subleq-theta, Lipsi, SERV, Ultrasmall, Jones's Ultimate
 RISC) found no ISA shape that beats an accumulator machine on this cost model.
-Three further levers were tested, and the winner dropped from 11,420 to **7,078
+Three further levers were tested, and the winner dropped from 11,420 to **5,210
 gates**:
 
 * **Read-only data out of writable RAM** — 12 constants were sitting in RAM at
-  ~196 gates each. A memory-map change, not an ISA change: **2,266 gates**.
+  ~116 gates each. A memory-map change, not an ISA change: **2,266 gates**.
 * **Variable pooling** — the benchmarks run in sequence, so 18 scalars pool to
   seven: **2,076 gates**. A compiler decision worth more than every remaining
   ISA decision combined.
@@ -103,7 +103,7 @@ Also measured and rejected: narrower data words. Storing 368 bits costs 12.5
 gates/bit at 16-bit words and 14.4 at 1-bit words — cost is set by bits, not
 words, so going 8-bit like Lipsi cannot help when memory is built from gates.
 
-Over half the remaining 7,078 gates is the benchmark's own working set.
+Over half the remaining 5,210 gates is the benchmark's own working set.
 
 ## Phases 5-6: the MOVE machine, and a correction
 
@@ -227,8 +227,8 @@ instruction count:
 
 | | gates | operations |
 |---|---|---|
-| cannot index without self-modifying code | 47,295 – 164,783 | 1–7 |
-| can index without self-modifying code | 7,078 – 8,848 | 3–14 |
+| cannot index without self-modifying code | 28,922 – 164,783 | 1–7 |
+| can index without self-modifying code | 5,210 – 8,848 | 3–14 |
 
 Everything in the cheap cluster is within 25% of everything else in it. The
 dominant variable in this whole study is one binary property: **can the machine

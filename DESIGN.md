@@ -1,7 +1,7 @@
 # The best hand-designed machine
 
 The machine that came out cheapest across five phases of hand design: a
-ten-instruction accumulator machine with an index register, at **7,078
+ten-instruction accumulator machine with an index register, at **5,210
 NAND-equivalent gates**, running the five-program benchmark suite in 10,333
 cycles.
 
@@ -104,11 +104,11 @@ Two things about this layout matter as much as the instruction set:
 
 | | gates | share |
 |---|---:|---|
-| Data RAM, 23 words x 16 bits | 4,597 | 65% |
+| Data RAM, 23 words x 16 bits | 2,762 | 65% |
 | CPU core (1,335) + output port register (174) | 1,509 | 21% |
 | Code and constant ROM, 212 words | 912 | 13% |
 | Address decode and glue | 60 | 1% |
-| **total** | **7,078** | |
+| **total** | **5,210** | |
 
 Gates are 2-input NAND cells after `abc -g NAND`, counting each D flip-flop as
 six. RAM costs ~200 gates per word; ROM costs 4.3. That **46x** ratio is the
@@ -167,14 +167,14 @@ decoder and read multiplexer, none of which can be shared.
 | | program store | total |
 |---|---:|---:|
 | 7 instructions, code must be writable | 247 words RAM = 48,166 | 49,477 |
-| 10 instructions, code can be read-only | 212 ROM + 23 RAM = 5,569 | **7,078** |
+| 10 instructions, code can be read-only | 212 ROM + 23 RAM = 5,569 | **5,210** |
 
 210 gates spent, 42,399 saved: a return of roughly 200x.
 
 Three qualifications, because this is easy to overstate:
 
 * **It does not save gates by itself.** The same 10-instruction machine with its
-  code in RAM costs 47,295 gates, barely better than the 7-instruction machine.
+  code in RAM costs 28,922 gates, barely better than the 7-instruction machine.
   The index register is a permission, not a saving; the saving appears only when
   the permission is used.
 * **It does not win on code size.** Twelve words.
@@ -188,8 +188,8 @@ them:
 
 | | gates | operations |
 |---|---|---|
-| cannot index without self-modifying code | 47,295 – 164,783 | 1–7 |
-| can index without self-modifying code | 7,078 – 8,848 | 3–14 |
+| cannot index without self-modifying code | 28,922 – 164,783 | 1–7 |
+| can index without self-modifying code | 5,210 – 8,848 | 3–14 |
 
 Within a cluster the instruction set is worth at most 25%. Between clusters it is
 worth 7x. SUBLEQ with two memory-mapped ports (`ADR`, `IND`) sits in the cheap

@@ -2469,3 +2469,57 @@ Their repository is 107 MB of QEMU ports, Kubernetes packaging and browser
 embedding, none of which has any bearing on gate counts. The three findings
 above transfer because they are about the measurement, not the subject. Taking
 more would have been collecting rather than borrowing.
+
+---
+
+# Phase 25: the whole project moved to latch memory
+
+A reader asked why chapter 1 quotes 116 gates a word while every table counts
+196, and proposed working with the cheaper memory throughout. He was right that
+the two figures side by side are confusing. Acting on it took more than editing
+text.
+
+**Two things had to be fixed before any number could move.** Substituting
+latches straight into the measured machines broke simulation: the write and the
+next read overlapped. The fix is to make the latches transparent only while the
+clock is low, which is how latch-based register files are normally clocked. And
+with that done the gate counter reported the memory as **zero gates**, because
+`dfflegalize` had been asked only about flip-flops and latches vanished without
+an error — the trap from the neighbouring project's finding 3, met in person.
+The counter now allows both cell types, prices a latch at 4/6 of a flip-flop,
+and refuses to return a design with no cells at all.
+
+**Everything re-measured, all nine machines verified in RTL on 123 outputs:**
+
+| | flip-flops | latches |
+|---|---:|---:|
+| SUBLEQ | 164,783 | 99,474 |
+| four instructions | 65,462 | 39,797 |
+| five instructions | 59,125 | 35,974 |
+| ten instructions | 7,078 | **5,210** |
+| hybrid store | 8,141 | 6,220 |
+
+A word of memory is 116 gates rather than 196. Writable against read-only is 27x
+rather than 46x. The gap between the two groups is 5.8x rather than 6.7x.
+
+**The first attempt at propagating this into the articles damaged them.** A
+blanket find-and-replace changed `1,063` everywhere, and that number meant two
+different things — the measured difference between two machines, and the core of
+the four-instruction machine. Reverted, and redone with every replacement
+anchored to its whole sentence. Forty-odd figures across four files.
+
+**The internal arithmetic came out tighter than before.** The break-even rule:
+eight words at 116 less 182 gates predicts 746, measured exactly 746. The index
+register: twelve words at 116 less 198 gates predicts 1,194 against a measured
+1,196, a residue of two gates where it used to be twenty-eight.
+
+**What this does not change.** Every ranking, because all the machines use the
+same memory. The timing results, which are about clock period. The discrete and
+capacitor cost models of phases 19 to 22, which price components rather than
+gates.
+
+**What is still not covered.** The phase 10 firmware figures were computed
+during that session without a committed script, so they cannot be recomputed by
+`make`. They were rescaled here by the one term that changes — the workload's
+5,400 gates of data memory becoming 3,196 — which is exact arithmetic, but a
+script would be better than arithmetic.

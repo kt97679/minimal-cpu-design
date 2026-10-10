@@ -48,8 +48,8 @@ operations at every site.
 
 | | code words | core gates | total | cycles |
 |---|---:|---:|---:|---:|
-| calls inlined | 326 | 1,226 | 8,058 | 30,092 |
-| with CALL and RETURN | **160** | 1,405 | **7,523** | 30,100 |
+| calls inlined | 326 | 1,226 | 5,854 | 30,092 |
+| with CALL and RETURN | **160** | 1,405 | **5,319** | 30,100 |
 
 A link register, one level deep: **−166 words, +179 gates of core, −535 gates
 net**, cycles unchanged.
@@ -76,8 +76,8 @@ construction it lands on the cheap side of part 1's central divide.
 
 | machine | gates | code words | cycles | core |
 |---|---:|---:|---:|---:|
-| accumulator + XOR + CALL/RET | **7,523** | 160 | 30,100 | 1,405 |
-| stack + XOR + CALL/RET | 8,355 | 179 | 30,204 | 2,155 |
+| accumulator + XOR + CALL/RET | **5,319** | 160 | 30,100 | 1,405 |
+| stack + XOR + CALL/RET | 6,151 | 179 | 30,204 | 2,155 |
 
 It loses by 11% here and by 12% on the original suite. I had predicted the gap
 would close on a code-heavy workload with subroutines, since factoring is where
@@ -100,8 +100,7 @@ JZ  JN  JMP       branch on zero, on sign, always
 CALL RET          subroutine, one level, via a link register
 ```
 
-7,523 gates on the firmware workload, of which 5,400 is the workload's own
-data. Which is to say: a PDP-8 with a checksum instruction and a link register.
+5,319 gates on the firmware workload, of which 3,196 is the workload's own data. Which is to say: a PDP-8 with a checksum instruction and a link register.
 
 ## 6. What real microcontrollers say
 
@@ -129,8 +128,8 @@ comparison says what a decade of features costs, not that ARM was careless.
 
 | storage | gate-equivalents per bit |
 |---|---:|
-| flip-flop RAM, as built in part 1 | 12.5 |
-| latch RAM, the cheapest gate-built form | 7.25 |
+| latch RAM, as built in part 1 | 7.25 |
+| flip-flop RAM, the version part 1 does not use | 12.5 |
 | 6T SRAM cell | 1.5 |
 | 1T flash or mask ROM | 0.25 |
 | the synthesised ROM in part 1 | 0.27 |
@@ -141,7 +140,8 @@ Two things fall out of that table.
 synthesised ROM is within 10% of a flash cell. That half of the model needed no
 correction.
 
-**The writable-to-read-only ratio collapses from 47x to 6x — or from 29x, if the gate-built side is the latch file rather than the flip-flop one.** Part 1's central
+**The writable-to-read-only ratio collapses from 27x to 6x — and it would be 47x
+if the gate-built side used flip-flops rather than latches.** Part 1's central
 claim — that an index register is not an optimisation but a permission to put
 the program in cheap memory — survives in direction and loses most of its
 magnitude. On real silicon it is worth about 6x, not 47x.
@@ -153,7 +153,7 @@ flip-flops:
 
 | | memory, gate-equivalents | core share |
 |---|---:|---:|
-| as built in part 1 (gate RAM) | 5,400 | 19% |
+| as built in part 1 (gate RAM) | 3,196 | 26% |
 | same machine, 6T SRAM | 648 | **52%** |
 | with 4 KB of SRAM | 49,152 | 2.7% |
 | with 128 KB of SRAM | 1,572,864 | 0.09% |
@@ -211,8 +211,8 @@ cost.**
 | writable against read-only | ratio |
 |---|---:|
 | discrete RTL | 52x |
-| gate-built, flip-flops (part 1) | 47x |
-| gate-built, latches | 29x |
+| gate-built, latches (part 1) | 27x |
+| gate-built, flip-flops | 47x |
 | real silicon, SRAM against flash | 6x |
 
 So the gate-built model of part 1 is not an arbitrary toy sitting off to one
