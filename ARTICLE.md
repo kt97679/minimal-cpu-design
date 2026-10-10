@@ -56,33 +56,45 @@ several architectures.
 
 ## 1. A machine is mostly memory
 
-The first thing I measured was the price of memory. One 16-bit word of RAM costs
-about 196 gates. (That figure is for a 136-word array; the script
-`synth/gates_ram.sh` reproduces it for any size.)
+The first thing I measured was the price of memory. One 16-bit word costs 116
+gates if built from latches and 196 if built from flip-flops. Where that
+difference comes from, and why I quote both, comes next.
 
-The processor of the four-instruction machine is 806 gates out of 27,406, three
-percent of the whole circuit. The entire processor costs as much as four words
-of memory.
+The processor of the four-instruction machine is 806 gates. The whole processor
+costs as much as seven words of memory.
 
 Which shows where to look for the minimum. There are two ways to make the
 machine smaller: make the program occupy fewer words, or make a word cheaper.
 Touching the processor is close to pointless — it is small already.
 
-The same thing shows why SUBLEQ loses. Its instruction takes three words instead
-of one, and every `if` unfolds into several instructions, because subtraction
-destroys its own operands.
+Take the second way first, it is short.
 
-The second way works immediately. An addressed memory writes one word at a time
-with the address held, so a cell does not need a clock edge: a latch is enough,
-and that is four gates against six. Which gives 116 gates a word instead of 196.
+A memory cell has to hold a bit. The familiar way is a flip-flop: it captures
+whatever is on its input at the moment of a clock pulse. Built from NAND gates,
+a flip-flop costs six of them.
 
-Only 40% of that saving is the cheaper cell itself. The rest is a multiplexer it
-makes unnecessary: a flip-flop has to be fed its own value back when nothing is
-written to it, one switch per bit.
+Memory does not need that strictness. During a write the address does not
+change and exactly one word is written, so there is nothing to catch a precise
+moment for. A latch is enough: while writing is enabled it passes the value
+straight through, and the moment it is disabled it holds whatever was there. A
+latch costs four gates instead of six.
 
-Every number in the article is counted with the flip-flop figure of 196, because
-every machine being compared is counted with it. The latch version is given in
-chapter 4.
+The saving comes out larger than the difference in the cell. A flip-flop
+triggers on every clock, so a word that is not being written has to be fed its
+own value back — one switch per bit. A latch needs no switch: it simply is not
+enabled. Of the 80 gates saved per word, the cell itself accounts for 32 and the
+vanished switches for 48.
+
+Every machine in this article was built and checked in simulation with
+flip-flop memory, and the numbers in the tables are counted at 196. That does
+not affect the comparison between machines: they all use the same memory, and
+the swap would shrink them all by about the same amount. Chapter 4 shows what
+the winner becomes with latches.
+
+And one more thing already visible here. Neither SUBLEQ nor the four-instruction
+machine can reach an array element by a computed index, so both patch their own
+commands as they run. Which means their program cannot live entirely in
+read-only memory. What that costs is chapter 3.
 
 ## 2. Where the minimum is
 
