@@ -57,46 +57,32 @@ several architectures.
 ## 1. A machine is mostly memory
 
 The first thing I measured was the price of memory. One 16-bit word of RAM costs
-about 196 gates.
+about 196 gates. (That figure is for a 136-word array; the script
+`synth/gates_ram.sh` reproduces it for any size.)
 
-That figure is for a 136-word array; the script `synth/gates_ram.sh` reproduces
-it for any size.
+The processor of the four-instruction machine is 806 gates out of 27,406, three
+percent of the whole circuit. The entire processor costs as much as four words
+of memory.
 
-The processor of the first machine I built took 806 gates out of 27,406 — three
-percent of the whole circuit. In the leanest machine in this article the
-processor takes 21%. A wide spread, but it points the same way in both
-directions: the processor is the smaller part of a computer and memory is the
-larger.
+Which shows where to look for the minimum. There are two ways to make the
+machine smaller: make the program occupy fewer words, or make a word cheaper.
+Touching the processor is close to pointless — it is small already.
 
-From which comes the relationship that explains everything below. One word of
-program costs about 196 gates — roughly a quarter of that first processor. This
-holds **as long as the program has to live in writable memory**; an important
-condition, and chapter 3 removes it.
+The same thing shows why SUBLEQ loses. Its instruction takes three words instead
+of one, and every `if` unfolds into several instructions, because subtraction
+destroys its own operands.
 
-The consequence runs against intuition. Any instruction that shortens the
-program pays for itself almost at once, even a complicated one. It only has to
-remove a few words to justify its own circuitry.
+The second way works immediately. An addressed memory writes one word at a time
+with the address held, so a cell does not need a clock edge: a latch is enough,
+and that is four gates against six. Which gives 116 gates a word instead of 196.
 
-And it also explains why SUBLEQ loses. Three words of memory per instruction,
-five memory accesses for each, and no comparison that leaves its operands
-intact, so every `if` turns into a macro of several instructions.
+Only 40% of that saving is the cheaper cell itself. The rest is a multiplexer it
+makes unnecessary: a flip-flop has to be fed its own value back when nothing is
+written to it, one switch per bit.
 
-The figure of 196 is for memory made of flip-flops, and every number in this
-article was measured with it. Memory made of latches costs 116 gates a word.
-
-An addressed memory writes one word at a time with the address held, so the
-cells do not need a clock edge — a latch is enough. And a latch is four gates
-where a flip-flop is six.
-
-Only 40% of that saving is the cheaper cell itself.
-
-The rest is a multiplexer the cheaper cell makes unnecessary. A flip-flop has to
-be fed its own value back when nothing is written to it, one switch per bit. A
-latch simply holds while writing is not enabled.
-
-Chapter 4 gives the machine both ways. Everything between here and there is
-counted with the flip-flop figure, because every machine being compared is
-counted with it.
+Every number in the article is counted with the flip-flop figure of 196, because
+every machine being compared is counted with it. The latch version is given in
+chapter 4.
 
 ## 2. Where the minimum is
 
