@@ -2523,3 +2523,33 @@ during that session without a committed script, so they cannot be recomputed by
 `make`. They were rescaled here by the one term that changes — the workload's
 5,400 gates of data memory becoming 3,196 — which is exact arithmetic, but a
 script would be better than arithmetic.
+
+## Phase 10 becomes reproducible, and the rescaling turns out to be wrong
+
+Phase 25 rescaled the firmware figures by hand because no script existed for
+them. `sw/phase10.py` now measures them the way everything else is measured,
+and the hand arithmetic was out by about 2%:
+
+| | rescaled by hand | measured |
+|---|---:|---:|
+| with CALL and RETURN | 5,319 | **5,442** |
+| calls inlined | 5,854 | **5,736** |
+
+The interesting error is not the 2%. It is the net saving from CALL and RETURN,
+which the rescaling preserved at 535 gates because both machines carry the same
+data memory. **Measured, it is 294.**
+
+The reason is the caveat part 1 already makes about average against marginal
+cost. 166 words of program disappear, but they are the *last* 166 words of a
+326-word image, and the marginal word there costs 2.85 gates rather than the
+4.3 of the average. So the saving is 473 gates of memory against 179 of core,
+not 714 against 179.
+
+CALL and RETURN still clear the bar, and are still the only instruction pair in
+this project that clears it in the ROM regime. The margin is smaller than
+published.
+
+Getting there needed the emitter extended for `call`, `ret`, `xor` and `xori`,
+and the reference emulator taught about a link register -- phase 10 had done
+all of that in a session and committed none of it. Both figures are now in
+`BASELINE.txt`, so `make verify` fails if they move.

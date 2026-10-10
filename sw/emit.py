@@ -20,11 +20,12 @@ from sweep import yosys_nand, ROOT, BUILD, aw, ram_cost, write_rom
 M = 0xFFFF
 
 
-def emit(iset, T, scheme):
+def emit(iset, T, scheme, prog=None):
     """Assemble the benchmark for this instruction set. Two passes for labels."""
     order = sorted(iset)
     OPC = {n: i for i, n in enumerate(order)}
-    prog = S.suite()
+    if prog is None:
+        prog = S.suite()
     USED.clear()
     consts = []
     varnames = sorted({x for op in prog for x in op[1:]
@@ -101,6 +102,18 @@ def emit_op(op, T, scheme, OPC, sym, here):
         for j, where in plan:
             out.append(I(j, sym.get(tgt, 0) if where == 'L' else skip))
         return out
+    if k == 'call':
+        return [I('CALL', sym.get(op[1], 0))]
+    if k == 'ret':
+        return [I('RET', 0)]
+    if k == 'xori':
+        # непосредственного XOR нет, поэтому константа кладётся в слово данных:
+        # имя вида K<число> ассемблер разложит в значение сам
+        cname = 'K%d' % (op[2] & 0xFFFF)
+        USED.add(cname)
+        return [I('LD_D', sym.get(op[1], 0)),
+                I('XOR_D', sym.get(cname, 0)),
+                I('ST_D', sym.get(op[1], 0))]
     if k in ('ldx', 'stx'):
         _, *rest = op
         if scheme == 'reg':
@@ -112,7 +125,7 @@ def emit_op(op, T, scheme, OPC, sym, here):
             return [I('LDX_D', sym.get(i, 0)), I('LD_D', sym.get(s, 0)),
                     I('ST_X', sym.get(base, 0))]
         raise NotImplementedError('only the index-register scheme is emitted')
-    tpl = T[k] if k in ('mov', 'add', 'sub', 'out') else \
+    tpl = T[k] if k in ('mov', 'add', 'sub', 'out', 'xor') else \
         (T.get(k + '_small') if (k in ('movi', 'addi', 'subi') and
                                  -2048 <= op[2] < 2048 and T.get(k + '_small'))
          else T.get(k + '_big') or T.get(k + '_small'))
@@ -129,7 +142,7 @@ def emit_op(op, T, scheme, OPC, sym, here):
 
 
 def emulate(mem, n, order, nout, limit=400000):
-    mem = mem[:]; pc = acc = x = cyc = 0; out = []
+    mem = mem[:]; pc = acc = x = cyc = link = 0; out = []
     for _ in range(limit):
         if len(out) >= nout:
             break
@@ -153,20 +166,25 @@ def emulate(mem, n, order, nout, limit=400000):
             cls = 'z' if acc == 0 else ('n' if acc & 0x8000 else 'p')
             if cls in A.COND[p['op']]:
                 nxt = ad
+        elif p['kind'] == 'call':
+            link = nxt                      # один уровень, через регистр связи
+            nxt = ad
+        elif p['kind'] == 'ret':
+            nxt = link
         pc = nxt & 0xFFF
     return out, cyc
 
 
-def measure(iset, scheme='reg'):
+def measure(iset, scheme='reg', prog=None, gold=None, key='searchwin'):
     iset = set(iset)
     T = A.compile_templates(iset)
-    mem, n, ncode, nro, sym, OPC = emit(iset, T, scheme)
+    mem, n, ncode, nro, sym, OPC = emit(iset, T, scheme, prog)
     order = sorted(iset)
-    gold = S.golden()
+    if gold is None:
+        gold = S.golden()
     out, cyc = emulate(mem, n, order, len(gold))
     ok = (out == gold)
     core = A.core_gates(iset)
-    key = 'searchwin'
     write_rom(key, mem[:nro], aw(n))
     nand, dff = yosys_nand(
         f'read_verilog {BUILD}/rom_{key}.v {ROOT}/rtl/memsys2.v {ROOT}/rtl/ramg.v\n'

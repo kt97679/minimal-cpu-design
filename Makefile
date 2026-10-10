@@ -86,3 +86,9 @@ handoff:
 	sh sw/handoff.sh
 
 .PHONY: handoff
+
+# Прошивочная нагрузка фазы 10: компиляция, сверка с эталоном, синтез, подсчёт.
+phase10:
+	python3 sw/phase10.py
+
+.PHONY: phase10

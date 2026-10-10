@@ -12,7 +12,11 @@ yosys                        Yosys 0.33 (git sha1 2584903a060)
 core.a10                     1334
 core.a7                      1120
 core.rsb                     1158
+firmware.call                5442.0
+firmware.call_words          160
 firmware.checksum            56
+firmware.inline              5736.0
+firmware.inline_words        326
 firmware.inlined_ops         139
 firmware.outputs             20
 firmware.virtual_ops         72

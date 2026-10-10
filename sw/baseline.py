@@ -99,6 +99,18 @@ def strict():
     v['latch.23_words'] = gg('NAND') + gg('NOT') + 4 * gg('DLATCH_P')
     v['latch.gates_per_word'] = round(v['latch.23_words'] / 23)
 
+    # фаза 10: прошивочная нагрузка, две машины
+    import emit as _e, firmware as _f
+    _p, _g = _f.suite2(), _f.golden2()
+    _cs = ['LD_D','ST_D','LDX_D','LD_X','ST_X','RSB_D','XOR_D','JZ','JN','JMP','CALL','RET']
+    for _nm, _is, _pr in (('call', _cs, _p),
+                          ('inline', [i for i in _cs if i not in ('CALL','RET')],
+                           _f.inline_calls(_p))):
+        _r = _e.measure(_is, prog=_pr, gold=_g, key='bl_%s' % _nm)
+        assert _r['ok'], 'firmware %s does not match the reference' % _nm
+        v['firmware.%s' % _nm] = _r['total']
+        v['firmware.%s_words' % _nm] = _r['code']
+
     import hybrid
     image = [(i * 2654435761) & 0xFFFF for i in range(247)]
     for n in (0, 5):

@@ -48,11 +48,10 @@ operations at every site.
 
 | | code words | core gates | total | cycles |
 |---|---:|---:|---:|---:|
-| calls inlined | 326 | 1,226 | 5,854 | 30,092 |
-| with CALL and RETURN | **160** | 1,405 | **5,319** | 30,100 |
+| calls inlined | 326 | 1,226 | 5,736 | 30,092 |
+| with CALL and RETURN | **160** | 1,405 | **5,442** | 30,100 |
 
-A link register, one level deep: **−166 words, +179 gates of core, −535 gates
-net**, cycles unchanged.
+A link register, one level deep: **−166 words, +179 gates of core, −294 gates net**, cycles unchanged.
 
 This is the first instruction group in the whole project to clear the
 break-even bar once the program is in ROM, and the reason is worth stating
@@ -76,7 +75,7 @@ construction it lands on the cheap side of part 1's central divide.
 
 | machine | gates | code words | cycles | core |
 |---|---:|---:|---:|---:|
-| accumulator + XOR + CALL/RET | **5,319** | 160 | 30,100 | 1,405 |
+| accumulator + XOR + CALL/RET | **5,442** | 160 | 30,100 | 1,405 |
 | stack + XOR + CALL/RET | 6,151 | 179 | 30,204 | 2,155 |
 
 It loses by 11% here and by 12% on the original suite. I had predicted the gap
@@ -100,7 +99,7 @@ JZ  JN  JMP       branch on zero, on sign, always
 CALL RET          subroutine, one level, via a link register
 ```
 
-5,319 gates on the firmware workload, of which 3,196 is the workload's own data. Which is to say: a PDP-8 with a checksum instruction and a link register.
+5,442 gates on the firmware workload, of which 3,196 is the workload's own data. Which is to say: a PDP-8 with a checksum instruction and a link register.
 
 ## 6. What real microcontrollers say
 
