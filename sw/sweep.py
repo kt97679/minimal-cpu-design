@@ -258,7 +258,14 @@ def aw(n):
 
 
 def yosys_nand(read_cmds, top):
-    """Map a design to 2-input NANDs + plain DFFs and return (nand, dff)."""
+    """Map a design to 2-input NANDs plus storage cells.
+
+    Returns (nand, dff_equiv) where dff_equiv is in flip-flop units: a
+    flip-flop counts 1, a gated D latch counts 4/6, because a NAND-built
+    flip-flop is six gates and a latch is four. Both cell types have to be
+    allowed in dfflegalize -- asking only for flip-flops makes a latch-based
+    memory vanish from the statistics without any error.
+    """
     # `flatten` is essential: yosys `stat` reports per module, so without it a
     # design with submodules is counted from whichever module prints first.
     script = (read_cmds + f"""
@@ -266,14 +273,17 @@ def yosys_nand(read_cmds, top):
         flatten
         proc; opt; fsm; opt; memory; opt
         techmap; opt -full
-        dfflegalize -cell $_DFF_P_ 0
+        dfflegalize -cell $_DFF_P_ 0 -cell $_DLATCH_P_ 0
         abc -g NAND
         opt_clean
         stat""")
     out = subprocess.run(['yosys', '-p', script], capture_output=True, text=True).stdout
     tail = out[out.rfind('Printing statistics'):]
     g = lambda c: int(re.search(rf'\$_{c}_\s+(\d+)', tail).group(1)) if re.search(rf'\$_{c}_\s+(\d+)', tail) else 0
-    return g('NAND') + g('NOT'), g('DFF_P')
+    dff, lat = g('DFF_P'), g('DLATCH_P')
+    if dff == 0 and lat == 0 and g('NAND') == 0:
+        raise RuntimeError('synthesis produced no cells at all for %s' % top)
+    return g('NAND') + g('NOT'), dff + lat * 4.0 / 6.0
 
 
 def write_rom(key, words, awidth):

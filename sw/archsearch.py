@@ -453,7 +453,7 @@ def core_gates(pool, iset, R, X):
 STATIC = dict(movi=16, out=6, add=8, subi=10, jz=5, jmp=10, ldx=3, mov=10,
               jn=8, sub=4, addi=6, stx=2, halt=1)
 NSCALAR, NARRAY, NCONST = 7, 16, 13
-G_RAM, G_ROM = 200.0, 4.3
+G_RAM, G_ROM = 116.0, 4.3
 
 
 def tlen(T, k):

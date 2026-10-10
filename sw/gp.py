@@ -218,7 +218,7 @@ STATIC = dict(movi=16, out=6, add=8, subi=10, jz=5, jmp=10, ldx=3, mov=10,
               jn=8, sub=4, addi=6, stx=2, halt=1)
 DYN = dict(movi=28, out=123, add=379, subi=351, jz=160, jmp=283, ldx=99,
            mov=284, jn=354, sub=85, addi=145, stx=71, halt=1)
-G_RAM, G_ROM, NK, NDATA = 200.0, 4.3, 13, 23
+G_RAM, G_ROM, NK, NDATA = 116.0, 4.3, 13, 23
 _cache = {}
 
 

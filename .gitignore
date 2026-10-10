@@ -13,3 +13,5 @@ search_runs.jsonl
 search.log
 gcpu_tmp.v
 dynprofile.json
+__pycache__/
+*.pyc
