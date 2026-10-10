@@ -186,6 +186,16 @@ a folder of these sorts into the order they were made.
 **Future sessions: use that script rather than calling `git bundle` by hand.**
 The convention lives here so it is found before the first handoff, not after.
 
+## Checking the translation
+
+    make parity
+
+compares the English and Russian articles: the sequence of block types must be
+identical, every number must appear the same number of times after normalising
+thousands separators and the `x` against `×` multiplier sign, and every table
+must be well formed. Numbers spelled out in words in one language are listed as
+explicit exceptions rather than ignored silently.
+
 ## Checking the numbers
 
     make verify

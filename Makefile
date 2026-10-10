@@ -92,3 +92,9 @@ phase10:
 	python3 sw/phase10.py
 
 .PHONY: phase10
+
+# Сверка двух языковых версий: структура, числа, таблицы.
+parity:
+	python3 sw/parity.py
+
+.PHONY: parity
