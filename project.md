@@ -2553,3 +2553,23 @@ Getting there needed the emitter extended for `call`, `ret`, `xor` and `xori`,
 and the reference emulator taught about a link register -- phase 10 had done
 all of that in a session and committed none of it. Both figures are now in
 `BASELINE.txt`, so `make verify` fails if they move.
+
+## The stack machine on firmware, and the limit of what is measured
+
+Recomputed from the stack compiler's own templates at the new price: core 2,155
+synthesised, 180 words of program, **6,061 gates** against the accumulator's
+measured 5,442. The stack machine loses by 11%, which is what phase 9 and phase
+10 both said.
+
+But the two numbers are not the same kind of number, and the article now says
+so in a footnote. The accumulator figure is measured end to end -- assembled,
+run against the reference interpreter, synthesised. The stack figure has a
+synthesised core and a modelled program length, because **this project has no
+stack assembler**. Phase 9 never had one either; it computed words from
+templates, and that was never stated.
+
+Writing one is the remaining gap. It is the same shape of work as `emit.py`:
+an assembler, a symbol table, and an emulator to check the outputs against the
+reference. Until then the 11% is a measured machine compared against a modelled
+one, and the honest thing is to mark it rather than to let the table imply
+otherwise.

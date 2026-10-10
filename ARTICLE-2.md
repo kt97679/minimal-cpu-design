@@ -76,7 +76,13 @@ construction it lands on the cheap side of part 1's central divide.
 | machine | gates | code words | cycles | core |
 |---|---:|---:|---:|---:|
 | accumulator + XOR + CALL/RET | **5,442** | 160 | 30,100 | 1,405 |
-| stack + XOR + CALL/RET | 6,151 | 179 | 30,204 | 2,155 |
+| stack + XOR + CALL/RET | 6,061* | 180 | 30,204 | 2,155 |
+
+\* The accumulator figures are measured end to end: assembled, checked against
+the reference interpreter, synthesised. The stack figure has a synthesised core,
+but its program length is computed from the compiler's templates, because this
+project has no stack assembler. So the 11% compares a measured machine against a
+modelled one.
 
 It loses by 11% here and by 12% on the original suite. I had predicted the gap
 would close on a code-heavy workload with subroutines, since factoring is where
