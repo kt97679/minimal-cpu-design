@@ -201,27 +201,30 @@ building it from discrete transistors, diodes and resistors, which is what
 anyone doing this on a bench actually faces.
 
 Three families, costing the same ten-instruction machine with static memory:
-RTL at 19,312 components and about $161, DTL at 25,426 for the same $161, CMOS
-at 11,815 and $335.
+RTL at 19,312 components and about $276, DTL at 25,426 and $340, CMOS at 11,815
+and $376. Unit prices are distributor listings of 10 October 2026 at the
+quantity a build this size would order — a 2N3904 at $0.030, a 1N4148 at
+$0.017, a 2N7002 at $0.030 — except the p-channel MOSFET, the resistor and the
+capacitor, which are estimates.
 
 **RTL if you are buying the parts, CMOS if the constraint is placing them.**
-Discrete CMOS needs 39% fewer components and costs twice as much, because a
-p-channel MOSFET is two and a half times the price of an NPN. DTL comes to the
-same money as RTL for a third more parts, and is bought for the fan-out and
-noise margin this model does not price. That is also the historical ordering,
+Discrete CMOS needs 39% fewer components and costs 36% more, because a
+p-channel MOSFET is nearly twice the price of an NPN and nothing in CMOS is a
+resistor. DTL costs a quarter more than RTL for a third more parts, and is
+bought for the fan-out and noise margin this model does not price. That is also the historical ordering,
 and for the same reason: in a discrete build the transistors are the expensive
 part.
 
 What matters here is the ratio this article turns on. A gated D latch in RTL is
 eight transistors and twelve resistors. A ROM bit is a diode where the bit is
-one and nothing where it is zero — half a component. **Sixty to one by cost.**
+one and nothing where it is zero — half a component. **Thirty-two to one by cost.**
 
 | writable against read-only | ratio |
 |---|---:|
-| discrete RTL, static | 60x |
+| discrete RTL, static | 32x |
 | gate-built, flip-flops | 47x |
 | gate-built, latches (part 1) | 27x |
-| discrete, 1T1C capacitor memory | 13x |
+| discrete, 1T1C capacitor memory | 5x |
 | real silicon, SRAM against flash | 6x |
 
 So the gate-built model of part 1 is not an arbitrary toy sitting off to one
@@ -239,7 +242,7 @@ Two things that section leaves out, and both matter to anyone who might
 actually build it. The $201 is the static-latch version: capacitor memory, the
 same 1T1C cell DRAM uses and the Atanasoff–Berry Computer used in 1942, is two
 parts a bit against twenty, and with the evolved core of chapter 6 the whole machine comes to 11,316 components
-and **$105**. And at 43 gate levels on its critical path it would
+and **$176**. And at 43 gate levels on its critical path it would
 run at **150–400 kHz** on bipolar transistors, or 20–50 kHz on discrete
 MOSFETs, which is where the Megaprocessor and the MOnSter 6502 actually sit.
 
