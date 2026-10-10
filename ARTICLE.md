@@ -56,26 +56,24 @@ several architectures.
 
 ## 1. A machine is mostly memory
 
-The first thing I measured was the price of memory. One 16-bit word costs 116 gates.
+One 16-bit word costs 116 gates. The processor of the four-instruction machine
+is 1,063 gates, which is the equivalent of nine words of memory.
 
-The processor of the four-instruction machine is 806 gates. The whole processor
-costs as much as seven words of memory.
-
-Which shows where to look for the minimum. There are two ways to make the
-machine smaller: make the program occupy fewer words, or make a word cheaper.
-Touching the processor is close to pointless — it is small already.
+So there are two ways to make the machine smaller: make the program occupy fewer
+words, or make a word cheaper. Touching the processor is close to pointless — it
+is small already.
 
 Take the second way first, it is short.
 
 A memory cell has to hold a bit. The familiar way is a flip-flop: it captures
-whatever is on its input at the moment of a clock pulse. Built from NAND gates,
-a flip-flop costs six of them.
+whatever is on its input at the moment of a clock pulse. A flip-flop is built
+from six NAND gates.
 
-Memory does not need that strictness. During a write the address does not
-change and exactly one word is written, so there is nothing to catch a precise
-moment for. A latch is enough: while writing is enabled it passes the value
-straight through, and the moment it is disabled it holds whatever was there. A
-latch costs four gates instead of six.
+Memory does not need that strictness. During a write the address does not change
+and exactly one word is written, so there is nothing to catch a precise moment
+for. A latch is enough: while writing is enabled it passes the value straight
+through, and the moment it is disabled it holds whatever was there. A latch is
+built from four gates instead of six.
 
 The saving comes out larger than the difference in the cell. A flip-flop
 triggers on every clock, so a word that is not being written has to be fed its
@@ -84,13 +82,13 @@ enabled. Of the 80 gates saved per word, the cell itself accounts for 32 and the
 vanished switches for 48.
 
 Every number in this article is counted with that memory, and every machine was
-built and checked in simulation with it. On flip-flops a word would cost 196
-gates, so every machine would come out about half as large again.
+checked in simulation. The 116 is measured on a 136-word array; the script
+`synth/gates_ram.sh` reproduces it for any size. On flip-flops a word would cost
+196 gates, so every machine would come out about half as large again.
 
-And one more thing already visible here. Neither SUBLEQ nor the four-instruction
-machine can reach an array element by a computed index, so both patch their own
-commands as they run. Which means their program cannot live entirely in
-read-only memory. What that costs is chapter 3.
+Neither SUBLEQ nor the four-instruction machine can reach an array element by a
+computed index, so both patch their own commands as they run. Which means their
+program cannot live entirely in read-only memory.
 
 ## 2. Where the minimum is
 

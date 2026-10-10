@@ -253,8 +253,8 @@ measurements, and should be read a notch below everything else here.
 
 Three things transfer out of both parts.
 
-**Count the whole machine, not the interesting part.** The processor was 3% of
-part 1's first design and is 0.09% of a microcontroller with 128 KB of RAM. Any
+**Count the whole machine, not the interesting part.** The processor is 29% of part 1's winner and 0.09% of a microcontroller with
+128 KB of RAM. Any
 argument about instruction sets that does not price the memory is an argument
 about the small end of the budget.
 
