@@ -16,6 +16,15 @@ Three comparisons:
              normalising thousands separators, decimal commas and the x/×
              multiplier sign.
   tables     every table must be contiguous and have a separator row.
+  sentences  paragraph by paragraph, the number of sentences must not differ
+             by more than one. Russian splits long English sentences, so an
+             exact match is the wrong test, but a gap of two or more means a
+             sentence was added to one language and not the other -- which the
+             block comparison cannot see.
+
+What none of this catches is a figure that is wrong in both languages at once.
+That happened: part 2 quoted part 1's break-even rule as 196 gates a word long
+after part 1 had moved to 116. Only reading finds those.
 
 Numbers spelled out in words in one language are the one legitimate exception,
 so they are listed explicitly rather than silently ignored.
@@ -110,6 +119,21 @@ def main():
                 print('      %-12s EN %d, RU %d' % (k, a, b))
         else:
             print('   figures    %d distinct, all matching' % len(fe))
+        # a colon is not a sentence end: "the rule says:" is one sentence,
+        # and counting it as two made this check fire on correct text
+        sent = lambda b: len([x for x in re.split(r'(?<=[.!?])\s+',
+                                                 ' '.join(b.split())) if x.strip()])
+        pe_, pr_ = [b for b in be if kind(b) == 'para'], [b for b in br if kind(b) == 'para']
+        gaps = [(i, sent(a), sent(b)) for i, (a, b) in enumerate(zip(pe_, pr_))
+                if abs(sent(a) - sent(b)) > 1]
+        if gaps:
+            bad += 1
+            print('   sentences  %d paragraph(s) differ by more than one:' % len(gaps))
+            for i, a, b in gaps[:5]:
+                print('      paragraph %d: EN %d, RU %d' % (i, a, b))
+                print('        EN %s' % ' '.join(pe_[i].split())[:78])
+        else:
+            print('   sentences  %d paragraphs, within one of each other' % len(pe_))
         for p in (pe, pr):
             ok, n = tables_well_formed(p)
             if not ok:

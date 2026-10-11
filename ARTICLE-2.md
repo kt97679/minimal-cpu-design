@@ -1,7 +1,7 @@
 # Part 2: what changes when you make it practical
 
 [Part 1](ARTICLE.md) built minimal CPUs out of logic gates and counted them,
-memory included. It found that a 16-bit word of gate-built RAM costs about 196
+memory included. It found that a 16-bit word of gate-built RAM costs about 116
 NAND-equivalents, so the machine is mostly memory; that the decisive property
 of an instruction set is whether it lets the program be read-only; that
 instruction count is the wrong axis; and that ten instructions won, until a
@@ -55,9 +55,9 @@ A link register, one level deep: **−166 words, +179 gates of core, −294 gate
 
 This is the first instruction group in the whole project to clear the
 break-even bar once the program is in ROM, and the reason is worth stating
-precisely. Part 1's rule is that an instruction earns its place by removing a
-word of program per 196 gates it costs — and once a word costs four gates
-instead of 196, nothing clears it. Every instruction tested up to this point
+precisely. Part 1's rule is that an instruction earns its place by removing a word of
+program per 116 gates it costs — and once a word costs four gates instead of
+116, nothing clears it. Every instruction tested up to this point
 removed *one word per call site*. This one removes a whole body, three times
 over. The rule was right; the range of instruction sizes I had tested was too
 narrow to show what it permitted.
