@@ -207,8 +207,7 @@ and $357.
 Unit prices are distributor listings of 10 October 2026, at the quantity a build
 this size would order: a 2N3904 at $0.030 per thousand, a 1N4148 at $0.017, a
 2N7002 at $0.030, a BSS84 at $0.045, an 0805 resistor at $0.003 and an 0805
-ceramic capacitor at $0.015. Only the logic ICs further down are unchecked
-estimates.
+ceramic capacitor at $0.015. Of the logic ICs further down, only the SRAM is still an estimate.
 
 **RTL if you are buying the parts, CMOS if the constraint is placing them.**
 Discrete CMOS needs 39% fewer components and costs 29% more, because a p-channel MOSFET is half again the price of an NPN
@@ -248,9 +247,10 @@ run at **150–400 kHz** on bipolar transistors, or 20–50 kHz on discrete
 MOSFETs, which is where the Megaprocessor and the MOnSter 6502 actually sit.
 
 Against which the honest comparison is the one that makes the discrete build an
-aesthetic choice rather than an engineering one. The same machine in 74HC logic
-with two memory chips is **271 parts and about $60**, an order of magnitude
-faster and forty times fewer things to solder. Building the memory from gate ICs instead takes 1,514 ICs and $303 of a $356
+aesthetic choice rather than an engineering one. The same machine in 74HC logic with two memory chips is **271 parts and about
+$63**, an order of magnitude faster and forty times fewer things to solder. Of
+that, $11.62 is the EEPROM alone: legacy parallel memory has become expensive
+precisely because nothing new uses it. Building the memory from gate ICs instead takes 1,514 ICs and $273 of a $336
 total — six times the processor — which is
 this article's own finding arriving in a fourth cost model.
 

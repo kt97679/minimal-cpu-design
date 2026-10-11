@@ -32,16 +32,21 @@ from sweep import BUILD
 #  0805 resistor   $0.003   5k      DigiKey, Yageo RC0805 $0.00306
 #  0805 capacitor  $0.015   4k      DigiKey, Yageo 10 pF $0.0142, Kemet 100 nF
 #                                   $0.0299; a nanofarad-class part sits between
-#  74HC00 quad     $0.20    100+    NOT VERIFIED
-#  74HC74 dual FF  $0.22    100+    NOT VERIFIED
-#  6116 SRAM       $1.50    1+      NOT VERIFIED
-#  28C256 EEPROM   $2.80    1+      NOT VERIFIED
+#  74HC00 quad     $0.18    250     DigiKey, Nexperia $0.1785 at 100;
+#                                   Fairchild $0.19 at 1.5k
+#  74HC74 dual FF  $0.20    25      DigiKey, Nexperia $0.1541 at 100,
+#                                   TI $0.2127 at 100; we need only 17
+#  AT28C256 EEPROM $11.62   1+      DigiKey, Microchip; Newark $10.51 at 250.
+#                                   Four times what I had assumed: legacy
+#                                   parallel memory has become expensive
+#                                   precisely because nothing new uses it
+#  6116 SRAM       $1.50    1+      NOT VERIFIED -- the last estimate left
 #
 # Prices move; the comparison between families and between memory cells is the
 # durable part, not the dollar totals.
 PRICE = dict(T=0.030, D=0.017, R=0.003, C=0.015, NM=0.030, PM=0.045,
-             IC_NAND=0.20, IC_FF=0.22, IC_SRAM=1.50, IC_ROM=2.80)
-VERIFIED = {'T', 'D', 'R', 'C', 'NM', 'PM'}
+             IC_NAND=0.18, IC_FF=0.20, IC_SRAM=1.50, IC_ROM=11.62)
+VERIFIED = {'T', 'D', 'R', 'C', 'NM', 'PM', 'IC_NAND', 'IC_FF', 'IC_ROM'}
 PRICE_DATE = '10 October 2026'
 
 # a 2-input gate, per family
