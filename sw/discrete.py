@@ -21,28 +21,27 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from sweep import BUILD
 
 # Unit prices, checked against distributor listings on 10 October 2026, at the
-# quantity tier a build of this size would actually order. Where a price could
-# not be verified it says so: those are my estimates and should be read as the
-# weakest numbers here.
+# quantity tier a build of this size would actually order.
 #
-#  part            price   tier    source
-#  2N3904 NPN     $0.030   1-4k    DigiKey, Diotec $0.0343 at 1k, $0.0267 at 4k
-#  1N4148 diode   $0.017   1-5k    DigiKey, onsemi $0.0211 at 1k, $0.0156 at 5k
-#  2N7002 n-MOS   $0.030   3-9k    DigiKey, Diotec $0.0320 at 3k, $0.0267 at 9k
-#  BSS84 p-MOS    $0.050   bulk    NOT VERIFIED -- $0.39 single at DigiKey;
-#                                  p-channel runs about 1.5-2x n-channel in bulk
-#  resistor       $0.003   5k reel NOT VERIFIED -- 0805 thick film, typical
-#  ceramic cap    $0.010   1k      NOT VERIFIED -- 100 nF class, typical
-#  74HC00 quad    $0.20    100+    NOT VERIFIED
-#  74HC74 dual FF $0.22    100+    NOT VERIFIED
-#  6116 SRAM      $1.50    1+      NOT VERIFIED
-#  28C256 EEPROM  $2.80    1+      NOT VERIFIED
+#  part             price   tier    source
+#  2N3904 NPN      $0.030   1-4k    DigiKey, Diotec $0.0343 at 1k, $0.0267 at 4k
+#  1N4148 diode    $0.017   1-5k    DigiKey, onsemi $0.0211 at 1k, $0.0156 at 5k
+#  2N7002 n-MOS    $0.030   3-9k    DigiKey, Diotec $0.0320 at 3k, $0.0267 at 9k
+#  BSS84 p-MOS     $0.045   3k      DigiKey, Diodes Inc $0.0430, UMW $0.0431,
+#                                   Taiwan Semi $0.0452; onsemi asks $0.0712
+#  0805 resistor   $0.003   5k      DigiKey, Yageo RC0805 $0.00306
+#  0805 capacitor  $0.015   4k      DigiKey, Yageo 10 pF $0.0142, Kemet 100 nF
+#                                   $0.0299; a nanofarad-class part sits between
+#  74HC00 quad     $0.20    100+    NOT VERIFIED
+#  74HC74 dual FF  $0.22    100+    NOT VERIFIED
+#  6116 SRAM       $1.50    1+      NOT VERIFIED
+#  28C256 EEPROM   $2.80    1+      NOT VERIFIED
 #
 # Prices move; the comparison between families and between memory cells is the
 # durable part, not the dollar totals.
-PRICE = dict(T=0.030, D=0.017, R=0.003, C=0.010, NM=0.030, PM=0.050,
+PRICE = dict(T=0.030, D=0.017, R=0.003, C=0.015, NM=0.030, PM=0.045,
              IC_NAND=0.20, IC_FF=0.22, IC_SRAM=1.50, IC_ROM=2.80)
-VERIFIED = {'T', 'D', 'NM'}
+VERIFIED = {'T', 'D', 'R', 'C', 'NM', 'PM'}
 PRICE_DATE = '10 October 2026'
 
 # a 2-input gate, per family
@@ -104,9 +103,9 @@ def main():
     print('   %-16s $%.3f each%s' % ('NPN transistor', PRICE['T'], '  (2N3904, 1-4k)'))
     print('   %-16s $%.3f each%s' % ('diode', PRICE['D'], '  (1N4148, 1-5k)'))
     print('   %-16s $%.3f each%s' % ('n-MOSFET', PRICE['NM'], '  (2N7002, 3-9k)'))
-    print('   %-16s $%.3f each%s' % ('p-MOSFET', PRICE['PM'], '  (BSS84, estimate)'))
-    print('   %-16s $%.3f each%s' % ('resistor', PRICE['R'], '  (0805, estimate)'))
-    print('   %-16s $%.3f each%s' % ('capacitor', PRICE['C'], '  (ceramic, estimate)'))
+    print('   %-16s $%.3f each%s' % ('p-MOSFET', PRICE['PM'], '  (BSS84, 3k)'))
+    print('   %-16s $%.3f each%s' % ('resistor', PRICE['R'], '  (0805, 5k)'))
+    print('   %-16s $%.3f each%s' % ('capacitor', PRICE['C'], '  (0805 ceramic, 4k)'))
     print()
     print('ONE 2-INPUT GATE')
     for f, d in GATE.items():

@@ -202,15 +202,17 @@ anyone doing this on a bench actually faces.
 
 Three families, costing the same ten-instruction machine with static memory:
 RTL at 19,312 components and about $276, DTL at 25,426 and $340, CMOS at 11,815
-and $376. Unit prices are distributor listings of 10 October 2026 at the
-quantity a build this size would order — a 2N3904 at $0.030, a 1N4148 at
-$0.017, a 2N7002 at $0.030 — except the p-channel MOSFET, the resistor and the
-capacitor, which are estimates.
+and $357.
+
+Unit prices are distributor listings of 10 October 2026, at the quantity a build
+this size would order: a 2N3904 at $0.030 per thousand, a 1N4148 at $0.017, a
+2N7002 at $0.030, a BSS84 at $0.045, an 0805 resistor at $0.003 and an 0805
+ceramic capacitor at $0.015. Only the logic ICs further down are unchecked
+estimates.
 
 **RTL if you are buying the parts, CMOS if the constraint is placing them.**
-Discrete CMOS needs 39% fewer components and costs 36% more, because a
-p-channel MOSFET is nearly twice the price of an NPN and nothing in CMOS is a
-resistor. DTL costs a quarter more than RTL for a third more parts, and is
+Discrete CMOS needs 39% fewer components and costs 29% more, because a p-channel MOSFET is half again the price of an NPN
+and nothing in CMOS is a resistor. DTL costs a quarter more than RTL for a third more parts, and is
 bought for the fan-out and noise margin this model does not price. That is also the historical ordering,
 and for the same reason: in a discrete build the transistors are the expensive
 part.
@@ -239,10 +241,9 @@ means the instruction-set work that was worth almost nothing in part 1 would be
 worth about 9% of a machine built on a bench.
 
 Two things that section leaves out, and both matter to anyone who might
-actually build it. The $201 is the static-latch version: capacitor memory, the
+actually build it. The $276 is the static-latch version: capacitor memory, the
 same 1T1C cell DRAM uses and the Atanasoff–Berry Computer used in 1942, is two
-parts a bit against twenty, and with the evolved core of chapter 6 the whole machine comes to 11,316 components
-and **$176**. And at 43 gate levels on its critical path it would
+parts a bit against twenty, and with the evolved core of chapter 6 the whole machine comes to 11,316 components and **$178**. And at 43 gate levels on its critical path it would
 run at **150–400 kHz** on bipolar transistors, or 20–50 kHz on discrete
 MOSFETs, which is where the Megaprocessor and the MOnSter 6502 actually sit.
 
